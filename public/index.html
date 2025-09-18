@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bybit V5 WebSocket Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="title">
+                <h1>Bybit V5 Dashboard</h1>
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-indicator disconnected" id="statusIndicator"></span>
+                    <span id="statusText">Disconnected</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="symbolInput">Symbol:</label>
+                    <input type="text" id="symbolInput" value="BTCUSDT" placeholder="BTCUSDT">
+                    <button id="symbolBtn">Change</button>
+                </div>
+
+                <div class="control-group">
+                    <label for="intervalSelect">Interval:</label>
+                    <select id="intervalSelect">
+                        <option value="1">1m</option>
+                        <option value="3">3m</option>
+                        <option value="5" selected>5m</option>
+                        <option value="15">15m</option>
+                        <option value="30">30m</option>
+                        <option value="60">1h</option>
+                        <option value="240">4h</option>
+                        <option value="D">1D</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="testnetToggle">
+                        Testnet
+                    </label>
+                </div>
+            </div>
+        </header>
+
+        <div class="stats-bar" id="statsBar">
+            <div class="stat">
+                <span class="stat-label">Price:</span>
+                <span class="stat-value" id="currentPrice">-</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">24h Change:</span>
+                <span class="stat-value" id="priceChange">-</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Spread:</span>
+                <span class="stat-value" id="spread">-</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Volume 24h:</span>
+                <span class="stat-value" id="volume24h">-</span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>Orderbook</h3>
+                        <div class="panel-controls">
+                            <span id="orderbookStats">-</span>
+                        </div>
+                    </div>
+                    <div class="orderbook-container">
+                        <div class="orderbook-section">
+                            <div class="orderbook-header">
+                                <span>Price</span>
+                                <span>Size</span>
+                                <span>Total</span>
+                            </div>
+                            <div class="asks" id="asksContainer">
+                                <div class="loading">Loading asks...</div>
+                            </div>
+                        </div>
+
+                        <div class="spread-info" id="spreadInfo">
+                            <span>Spread: -</span>
+                        </div>
+
+                        <div class="orderbook-section">
+                            <div class="bids" id="bidsContainer">
+                                <div class="loading">Loading bids...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>Price Chart (OHLC)</h3>
+                        <div class="panel-controls">
+                            <span id="klineStats">-</span>
+                        </div>
+                    </div>
+                    <div class="kline-container" id="klineContainer">
+                        <div class="loading">Loading chart data...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>Liquidations</h3>
+                        <div class="panel-controls">
+                            <span id="liquidationStats">Recent: 0</span>
+                        </div>
+                    </div>
+                    <div class="liquidations-container">
+                        <div class="liquidations-header">
+                            <span>Time</span>
+                            <span>Side</span>
+                            <span>Size</span>
+                            <span>Price</span>
+                            <span>Value</span>
+                        </div>
+                        <div class="liquidations-list" id="liquidationsList">
+                            <div class="loading">Loading liquidations...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
