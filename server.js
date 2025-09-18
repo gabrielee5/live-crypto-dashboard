@@ -19,6 +19,10 @@ class BybitDashboardServer {
             }
         });
 
+        this.io.on('connect_error', (error) => {
+            console.error('Socket.IO connection error:', error);
+        });
+
         this.wsClient = null;
         this.orderbookManager = new OrderbookManager();
         this.klineManager = new KlineManager();
@@ -84,6 +88,8 @@ class BybitDashboardServer {
     }
 
     setupSocketIO() {
+        console.log('Setting up Socket.IO server...');
+
         this.io.on('connection', (socket) => {
             console.log('Client connected:', socket.id);
 

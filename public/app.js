@@ -1,5 +1,6 @@
 class BybitDashboard {
     constructor() {
+        console.log('Initializing Bybit Dashboard...');
         this.socket = null;
         this.currentSymbol = 'BTCUSDT';
         this.currentInterval = '5';
@@ -8,9 +9,10 @@ class BybitDashboard {
         this.liquidations = [];
         this.klineData = null;
 
+        this.initializeElements();
         this.initializeSocket();
         this.setupEventListeners();
-        this.initializeElements();
+        console.log('Dashboard initialization complete');
     }
 
     initializeElements() {
@@ -37,7 +39,20 @@ class BybitDashboard {
     }
 
     initializeSocket() {
-        this.socket = io();
+        console.log('Initializing Socket.io connection...');
+
+        if (typeof io === 'undefined') {
+            console.error('Socket.io client library not loaded!');
+            return;
+        }
+
+        try {
+            this.socket = io();
+            console.log('Socket.io initialized');
+        } catch (error) {
+            console.error('Failed to initialize Socket.io:', error);
+            return;
+        }
 
         this.socket.on('connect', () => {
             console.log('Connected to server');
@@ -81,6 +96,11 @@ class BybitDashboard {
             this.currentInterval = data.interval;
             this.elements.intervalSelect.value = data.interval;
             this.clearKlineData();
+        });
+
+        this.socket.on('connect_error', (error) => {
+            console.error('Socket connection error:', error);
+            this.updateConnectionStatus(false);
         });
 
         this.socket.on('error', (error) => {
@@ -343,5 +363,11 @@ class BybitDashboard {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    new BybitDashboard();
+    console.log('DOM loaded, starting Bybit Dashboard...');
+    try {
+        window.dashboard = new BybitDashboard();
+        console.log('Dashboard created successfully');
+    } catch (error) {
+        console.error('Failed to create dashboard:', error);
+    }
 });
