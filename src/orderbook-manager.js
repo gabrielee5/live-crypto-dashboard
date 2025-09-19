@@ -50,7 +50,6 @@ class OrderbookManager extends EventEmitter {
         this.orderbooks.set(symbol, orderbook);
         this.emitOrderbookUpdate(symbol);
 
-        console.log(`Orderbook snapshot for ${symbol}: ${orderbook.bids.size} bids, ${orderbook.asks.size} asks`);
     }
 
     handleDelta(symbol, data) {

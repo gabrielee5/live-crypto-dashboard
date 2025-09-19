@@ -171,7 +171,6 @@ class BybitDashboardServer {
 
         this.tickerManager.on('tickerUpdate', (ticker) => {
             if (ticker.symbol === this.currentSymbol) {
-                console.log(`Ticker update for ${ticker.symbol}: 24h: ${ticker.price24hPcnt}%`);
                 this.io.emit('ticker', ticker);
             }
         });

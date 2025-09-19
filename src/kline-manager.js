@@ -63,7 +63,6 @@ class KlineManager extends EventEmitter {
                 data.candles = data.candles.slice(-this.maxCandles);
             }
 
-            console.log(`Confirmed candle for ${symbol} ${interval}: ${candle.close} (${candle.status})`);
         } else {
             data.currentCandle = candle;
 
@@ -289,12 +288,10 @@ class KlineManager extends EventEmitter {
             if (this.klineData.has(key)) {
                 const data = this.klineData.get(key);
                 if (data.candles.length > 0) {
-                    console.log(`Historical data already exists for ${symbol} ${interval}`);
                     return data.candles;
                 }
             }
 
-            console.log(`Fetching historical data for ${symbol} ${interval}...`);
             const historicalCandles = await this.fetchHistoricalData(symbol, interval, limit);
 
             if (!this.klineData.has(key)) {
@@ -309,7 +306,6 @@ class KlineManager extends EventEmitter {
             const data = this.klineData.get(key);
             data.candles = historicalCandles.slice(-this.maxCandles);
 
-            console.log(`Loaded ${data.candles.length} historical candles for ${symbol} ${interval}`);
 
             this.emit('historicalDataLoaded', {
                 symbol,

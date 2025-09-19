@@ -43,7 +43,6 @@ class LiquidationManager extends EventEmitter {
 
         this.emit('liquidation', liquidation);
 
-        console.log(`Liquidation: ${symbol} ${liquidation.side} ${liquidation.volume} @ ${liquidation.price}`);
     }
 
     formatLiquidationData(symbol, data) {

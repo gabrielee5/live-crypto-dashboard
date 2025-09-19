@@ -12,7 +12,6 @@ class BigTradesManager extends EventEmitter {
 
     setMinTradeValue(value) {
         this.minTradeValue = value;
-        console.log(`Big trades filter updated: minimum value $${value.toLocaleString()}`);
     }
 
     addTrade(tradeData) {
@@ -35,7 +34,6 @@ class BigTradesManager extends EventEmitter {
                 this.trades = this.trades.slice(0, this.maxTrades);
             }
 
-            console.log(`Big trade: ${trade.symbol} ${trade.side} ${trade.size} @ ${trade.price} ($${trade.value.toLocaleString()})`);
 
             // Emit the big trade event
             this.emit('bigTrade', trade);
@@ -131,7 +129,6 @@ class BigTradesManager extends EventEmitter {
 
     clear() {
         this.trades = [];
-        console.log('Big trades cleared');
     }
 }
 
