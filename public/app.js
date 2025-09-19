@@ -121,6 +121,7 @@ class BybitDashboard {
         this.initializeSocket();
         this.setupEventListeners();
         this.startUpdateLoop();
+        this.startPerformanceMonitoring();
         console.log('Enhanced Dashboard initialization complete');
     }
 
@@ -151,12 +152,26 @@ class BybitDashboard {
             midPrice: document.getElementById('midPrice'),
             spreadValue: document.getElementById('spreadValue'),
 
-            // Chart and liquidations
+            // Enhanced chart elements
             klineContainer: document.getElementById('klineContainer'),
+            candlestickChart: document.getElementById('candlestickChart'),
+            chartCrosshair: document.getElementById('chartCrosshair'),
+            chartTooltip: document.getElementById('chartTooltip'),
+            chartLoading: document.getElementById('chartLoading'),
             klineStats: document.getElementById('klineStats'),
+
+            // Depth chart elements
+            depthChart: document.getElementById('depthChart'),
+            depthTooltip: document.getElementById('depthTooltip'),
+
+            // Liquidations
             liquidationsList: document.getElementById('liquidationsList'),
             liquidationStats: document.getElementById('liquidationStats')
         };
+
+        // Initialize charts
+        this.initializeChart();
+        this.initializeDepthChart();
     }
 
     initializeSocket() {
@@ -259,7 +274,7 @@ class BybitDashboard {
             this.toggleTestnet(this.elements.testnetToggle.checked);
         });
 
-        // Keyboard shortcuts
+        // Enhanced keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'INPUT') return;
 
@@ -277,12 +292,43 @@ class BybitDashboard {
                     this.elements.intervalSelect.value = '1';
                     this.changeInterval('1');
                     break;
+                case '3':
+                    this.elements.intervalSelect.value = '3';
+                    this.changeInterval('3');
+                    break;
                 case '5':
                     this.elements.intervalSelect.value = '5';
                     this.changeInterval('5');
                     break;
+                case 'h':
+                case 'H':
+                    this.elements.intervalSelect.value = '60';
+                    this.changeInterval('60');
+                    break;
+                case 'd':
+                case 'D':
+                    this.elements.intervalSelect.value = 'D';
+                    this.changeInterval('D');
+                    break;
+                case 's':
+                case 'S':
+                    e.preventDefault();
+                    this.elements.symbolInput.focus();
+                    this.elements.symbolInput.select();
+                    break;
+                case 'Escape':
+                    e.preventDefault();
+                    document.activeElement.blur();
+                    break;
+                case 'F11':
+                    e.preventDefault();
+                    this.toggleFullscreen();
+                    break;
             }
         });
+
+        // Add visual feedback for interactions
+        this.addVisualFeedback();
     }
 
     queueUpdate(updateFn) {
@@ -290,20 +336,29 @@ class BybitDashboard {
     }
 
     startUpdateLoop() {
-        setInterval(() => {
-            if (this.isUpdating || this.updateQueue.length === 0) return;
+        const processUpdates = () => {
+            if (this.isUpdating || this.updateQueue.length === 0) {
+                requestAnimationFrame(processUpdates);
+                return;
+            }
 
             this.isUpdating = true;
-            const update = this.updateQueue.shift();
+            const startTime = performance.now();
 
-            try {
-                update();
-            } catch (error) {
-                console.error('Error during update:', error);
+            while (this.updateQueue.length > 0 && (performance.now() - startTime) < 8) {
+                const update = this.updateQueue.shift();
+                try {
+                    update();
+                } catch (error) {
+                    console.error('Error during update:', error);
+                }
             }
 
             this.isUpdating = false;
-        }, 16); // ~60fps
+            requestAnimationFrame(processUpdates);
+        };
+
+        requestAnimationFrame(processUpdates);
     }
 
     updateConnectionStatus(connected) {
@@ -359,20 +414,7 @@ class BybitDashboard {
     renderEnhancedOrderbook() {
         const depthData = this.enhancedOrderbook.calculateDepthData();
 
-        // Render asks (highest to lowest)
-        this.elements.asksContainer.innerHTML = depthData.asks.reverse().map(ask => {
-            const depthPercentage = Math.min(ask.percentage, 100);
-            return `
-                <div class="orderbook-row ask" data-price="${ask.price}">
-                    <div class="depth-background ask-depth" style="width: ${depthPercentage}%"></div>
-                    <span class="price">${this.formatPrice(ask.price)}</span>
-                    <span class="size">${this.formatSize(ask.size)}</span>
-                    <span class="total">${this.formatSize(ask.cumulative)}</span>
-                </div>
-            `;
-        }).join('');
-
-        // Render bids (highest to lowest)
+        // Render bids (highest to lowest) - Left side
         this.elements.bidsContainer.innerHTML = depthData.bids.map(bid => {
             const depthPercentage = Math.min(bid.percentage, 100);
             return `
@@ -385,8 +427,24 @@ class BybitDashboard {
             `;
         }).join('');
 
+        // Render asks (lowest to highest) - Right side
+        this.elements.asksContainer.innerHTML = depthData.asks.map(ask => {
+            const depthPercentage = Math.min(ask.percentage, 100);
+            return `
+                <div class="orderbook-row ask" data-price="${ask.price}">
+                    <div class="depth-background ask-depth" style="width: ${depthPercentage}%"></div>
+                    <span class="price">${this.formatPrice(ask.price)}</span>
+                    <span class="size">${this.formatSize(ask.size)}</span>
+                    <span class="total">${this.formatSize(ask.cumulative)}</span>
+                </div>
+            `;
+        }).join('');
+
         // Add click handlers for price levels
         this.addOrderbookClickHandlers();
+
+        // Update depth chart
+        this.renderDepthChart(depthData);
     }
 
     addOrderbookClickHandlers() {
@@ -434,46 +492,421 @@ class BybitDashboard {
         this.updateKlineStats();
     }
 
+    initializeChart() {
+        if (!this.elements.candlestickChart) return;
+
+        this.chartCtx = this.elements.candlestickChart.getContext('2d');
+        this.chartData = [];
+        this.chartPadding = { top: 20, right: 60, bottom: 60, left: 20 };
+        this.crosshairPosition = { x: 0, y: 0 };
+
+        this.resizeChart();
+        this.setupChartEvents();
+
+        window.addEventListener('resize', () => this.resizeChart());
+    }
+
+    resizeChart() {
+        if (!this.elements.candlestickChart || !this.elements.klineContainer) return;
+
+        const container = this.elements.klineContainer;
+        const rect = container.getBoundingClientRect();
+
+        this.elements.candlestickChart.width = rect.width;
+        this.elements.candlestickChart.height = rect.height;
+
+        this.chartWidth = rect.width;
+        this.chartHeight = rect.height;
+
+        if (this.chartData.length > 0) {
+            this.renderChart();
+        }
+    }
+
+    setupChartEvents() {
+        this.elements.candlestickChart.addEventListener('mousemove', (e) => {
+            const rect = this.elements.candlestickChart.getBoundingClientRect();
+            this.crosshairPosition.x = e.clientX - rect.left;
+            this.crosshairPosition.y = e.clientY - rect.top;
+
+            this.updateCrosshair();
+            this.updateTooltip(e);
+        });
+
+        this.elements.candlestickChart.addEventListener('mouseleave', () => {
+            this.elements.chartCrosshair.style.display = 'none';
+            this.elements.chartTooltip.classList.remove('visible');
+        });
+
+        this.elements.candlestickChart.addEventListener('mouseenter', () => {
+            this.elements.chartCrosshair.style.display = 'block';
+        });
+    }
+
     renderKline() {
         if (!this.klineData || !this.klineData.allCandles) return;
 
-        const candles = this.klineData.allCandles.slice(-30);
-
-        this.elements.klineContainer.innerHTML = `
-            <table class="kline-table">
-                <thead>
-                    <tr>
-                        <th>Time</th>
-                        <th>Open</th>
-                        <th>High</th>
-                        <th>Low</th>
-                        <th>Close</th>
-                        <th>Volume</th>
-                        <th>Change</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${candles.reverse().map(candle => `
-                        <tr class="kline-row ${candle.direction} ${candle.status === 'updating' ? 'updating' : ''}">
-                            <td>${new Date(candle.start).toLocaleTimeString()}</td>
-                            <td>${this.formatPrice(candle.open)}</td>
-                            <td>${this.formatPrice(candle.high)}</td>
-                            <td>${this.formatPrice(candle.low)}</td>
-                            <td>${this.formatPrice(candle.close)}</td>
-                            <td>${this.formatVolume(candle.volume)}</td>
-                            <td class="${candle.change >= 0 ? 'positive' : 'negative'}">
-                                ${candle.changePercent >= 0 ? '+' : ''}${candle.changePercent.toFixed(2)}%
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
+        this.chartData = this.klineData.allCandles.slice(-100);
+        this.elements.chartLoading.style.display = 'none';
+        this.renderChart();
 
         if (this.klineData.candle) {
             const latest = this.klineData.candle;
             this.elements.priceChange.className = `price-change ${latest.change >= 0 ? 'positive' : 'negative'}`;
             this.elements.priceChange.textContent = `${latest.change >= 0 ? '+' : ''}${latest.changePercent.toFixed(2)}%`;
+        }
+    }
+
+    renderChart() {
+        if (!this.chartCtx || !this.chartData.length) return;
+
+        const ctx = this.chartCtx;
+        const data = this.chartData;
+
+        ctx.clearRect(0, 0, this.chartWidth, this.chartHeight);
+
+        const chartArea = {
+            x: this.chartPadding.left,
+            y: this.chartPadding.top,
+            width: this.chartWidth - this.chartPadding.left - this.chartPadding.right,
+            height: (this.chartHeight - this.chartPadding.top - this.chartPadding.bottom) * 0.7
+        };
+
+        const volumeArea = {
+            x: this.chartPadding.left,
+            y: chartArea.y + chartArea.height + 10,
+            width: chartArea.width,
+            height: (this.chartHeight - this.chartPadding.top - this.chartPadding.bottom) * 0.25
+        };
+
+        const prices = data.flatMap(d => [d.high, d.low]);
+        const volumes = data.map(d => d.volume);
+
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+        const maxVolume = Math.max(...volumes);
+
+        const priceRange = maxPrice - minPrice;
+        const candleWidth = Math.max(2, chartArea.width / data.length - 2);
+        const candleSpacing = chartArea.width / data.length;
+
+        this.drawGrid(ctx, chartArea, minPrice, maxPrice);
+        this.drawCandlesticks(ctx, data, chartArea, minPrice, priceRange, candleWidth, candleSpacing);
+        this.drawVolume(ctx, data, volumeArea, maxVolume, candleWidth, candleSpacing);
+        this.drawPriceScale(ctx, minPrice, maxPrice, chartArea);
+    }
+
+    drawGrid(ctx, area, minPrice, maxPrice) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
+
+        const gridLines = 8;
+        const priceStep = (maxPrice - minPrice) / gridLines;
+
+        for (let i = 0; i <= gridLines; i++) {
+            const y = area.y + (area.height / gridLines) * i;
+            ctx.beginPath();
+            ctx.moveTo(area.x, y);
+            ctx.lineTo(area.x + area.width, y);
+            ctx.stroke();
+        }
+
+        const timeGridLines = 6;
+        for (let i = 0; i <= timeGridLines; i++) {
+            const x = area.x + (area.width / timeGridLines) * i;
+            ctx.beginPath();
+            ctx.moveTo(x, area.y);
+            ctx.lineTo(x, area.y + area.height);
+            ctx.stroke();
+        }
+    }
+
+    drawCandlesticks(ctx, data, area, minPrice, priceRange, candleWidth, candleSpacing) {
+        data.forEach((candle, index) => {
+            const x = area.x + index * candleSpacing + candleSpacing / 2;
+
+            const openY = area.y + area.height - ((candle.open - minPrice) / priceRange) * area.height;
+            const closeY = area.y + area.height - ((candle.close - minPrice) / priceRange) * area.height;
+            const highY = area.y + area.height - ((candle.high - minPrice) / priceRange) * area.height;
+            const lowY = area.y + area.height - ((candle.low - minPrice) / priceRange) * area.height;
+
+            const isBullish = candle.close >= candle.open;
+            const color = isBullish ? '#00D4AA' : '#FF6B6B';
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+
+            ctx.beginPath();
+            ctx.moveTo(x, highY);
+            ctx.lineTo(x, lowY);
+            ctx.stroke();
+
+            ctx.fillStyle = isBullish ? color : color;
+            const rectY = Math.min(openY, closeY);
+            const rectHeight = Math.abs(closeY - openY) || 1;
+
+            if (isBullish) {
+                ctx.strokeStyle = color;
+                ctx.strokeRect(x - candleWidth / 2, rectY, candleWidth, rectHeight);
+            } else {
+                ctx.fillRect(x - candleWidth / 2, rectY, candleWidth, rectHeight);
+            }
+        });
+    }
+
+    drawVolume(ctx, data, area, maxVolume, candleWidth, candleSpacing) {
+        data.forEach((candle, index) => {
+            const x = area.x + index * candleSpacing + candleSpacing / 2;
+            const height = (candle.volume / maxVolume) * area.height;
+            const y = area.y + area.height - height;
+
+            const isBullish = candle.close >= candle.open;
+            ctx.fillStyle = isBullish ? 'rgba(0, 212, 170, 0.5)' : 'rgba(255, 107, 107, 0.5)';
+            ctx.fillRect(x - candleWidth / 2, y, candleWidth, height);
+        });
+    }
+
+    drawPriceScale(ctx, minPrice, maxPrice, area) {
+        ctx.fillStyle = '#B0B0B0';
+        ctx.font = '11px JetBrains Mono';
+        ctx.textAlign = 'left';
+
+        const gridLines = 8;
+        const priceStep = (maxPrice - minPrice) / gridLines;
+
+        for (let i = 0; i <= gridLines; i++) {
+            const price = minPrice + priceStep * i;
+            const y = area.y + area.height - (area.height / gridLines) * i;
+            ctx.fillText(this.formatPrice(price), area.x + area.width + 10, y + 4);
+        }
+    }
+
+    updateCrosshair() {
+        if (!this.elements.chartCrosshair) return;
+
+        const crosshair = this.elements.chartCrosshair;
+        crosshair.style.left = this.crosshairPosition.x + 'px';
+        crosshair.style.top = this.crosshairPosition.y + 'px';
+    }
+
+    updateTooltip(e) {
+        if (!this.chartData.length) return;
+
+        const rect = this.elements.candlestickChart.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const chartArea = {
+            x: this.chartPadding.left,
+            y: this.chartPadding.top,
+            width: this.chartWidth - this.chartPadding.left - this.chartPadding.right,
+            height: (this.chartHeight - this.chartPadding.top - this.chartPadding.bottom) * 0.7
+        };
+
+        if (x >= chartArea.x && x <= chartArea.x + chartArea.width &&
+            y >= chartArea.y && y <= chartArea.y + chartArea.height) {
+
+            const candleIndex = Math.floor((x - chartArea.x) / (chartArea.width / this.chartData.length));
+            const candle = this.chartData[candleIndex];
+
+            if (candle) {
+                const tooltip = this.elements.chartTooltip;
+                const time = new Date(candle.start).toLocaleString();
+
+                tooltip.innerHTML = `
+                    <div>Time: ${time}</div>
+                    <div>O: ${this.formatPrice(candle.open)}</div>
+                    <div>H: ${this.formatPrice(candle.high)}</div>
+                    <div>L: ${this.formatPrice(candle.low)}</div>
+                    <div>C: ${this.formatPrice(candle.close)}</div>
+                    <div>Vol: ${this.formatVolume(candle.volume)}</div>
+                `;
+
+                tooltip.style.left = Math.min(e.clientX + 10, window.innerWidth - 200) + 'px';
+                tooltip.style.top = Math.max(e.clientY - 10, 10) + 'px';
+                tooltip.classList.add('visible');
+            }
+        } else {
+            this.elements.chartTooltip.classList.remove('visible');
+        }
+    }
+
+    initializeDepthChart() {
+        if (!this.elements.depthChart) return;
+
+        this.depthCtx = this.elements.depthChart.getContext('2d');
+        this.depthPadding = { top: 10, right: 50, bottom: 20, left: 20 };
+
+        this.resizeDepthChart();
+        this.setupDepthChartEvents();
+
+        window.addEventListener('resize', () => this.resizeDepthChart());
+    }
+
+    resizeDepthChart() {
+        if (!this.elements.depthChart) return;
+
+        const container = this.elements.depthChart.parentElement;
+        const rect = container.getBoundingClientRect();
+
+        this.elements.depthChart.width = rect.width;
+        this.elements.depthChart.height = rect.height;
+
+        this.depthWidth = rect.width;
+        this.depthHeight = rect.height;
+    }
+
+    setupDepthChartEvents() {
+        this.elements.depthChart.addEventListener('mousemove', (e) => {
+            this.updateDepthTooltip(e);
+        });
+
+        this.elements.depthChart.addEventListener('mouseleave', () => {
+            this.elements.depthTooltip.classList.remove('visible');
+        });
+    }
+
+    renderDepthChart(depthData) {
+        if (!this.depthCtx || !depthData.bids.length || !depthData.asks.length) return;
+
+        const ctx = this.depthCtx;
+        ctx.clearRect(0, 0, this.depthWidth, this.depthHeight);
+
+        const chartArea = {
+            x: this.depthPadding.left,
+            y: this.depthPadding.top,
+            width: this.depthWidth - this.depthPadding.left - this.depthPadding.right,
+            height: this.depthHeight - this.depthPadding.top - this.depthPadding.bottom
+        };
+
+        const allPrices = [...depthData.bids.map(b => b.price), ...depthData.asks.map(a => a.price)];
+        const minPrice = Math.min(...allPrices);
+        const maxPrice = Math.max(...allPrices);
+        const priceRange = maxPrice - minPrice;
+
+        const maxCumulative = Math.max(
+            depthData.bids[depthData.bids.length - 1]?.cumulative || 0,
+            depthData.asks[depthData.asks.length - 1]?.cumulative || 0
+        );
+
+        this.drawDepthGrid(ctx, chartArea);
+        this.drawDepthCurves(ctx, depthData, chartArea, minPrice, priceRange, maxCumulative);
+        this.drawDepthScale(ctx, chartArea, maxCumulative);
+    }
+
+    drawDepthGrid(ctx, area) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 1;
+
+        for (let i = 0; i <= 4; i++) {
+            const y = area.y + (area.height / 4) * i;
+            ctx.beginPath();
+            ctx.moveTo(area.x, y);
+            ctx.lineTo(area.x + area.width, y);
+            ctx.stroke();
+        }
+    }
+
+    drawDepthCurves(ctx, depthData, area, minPrice, priceRange, maxCumulative) {
+        const spreadInfo = this.enhancedOrderbook.getSpreadInfo();
+        if (!spreadInfo) return;
+
+        const midPrice = spreadInfo.midPrice;
+        const midX = area.x + ((midPrice - minPrice) / priceRange) * area.width;
+
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.strokeStyle = '#00D4AA';
+        ctx.fillStyle = 'rgba(0, 212, 170, 0.1)';
+
+        let firstPoint = true;
+        for (const bid of depthData.bids.reverse()) {
+            const x = area.x + ((bid.price - minPrice) / priceRange) * area.width;
+            const y = area.y + area.height - (bid.cumulative / maxCumulative) * area.height;
+
+            if (firstPoint) {
+                ctx.moveTo(x, area.y + area.height);
+                ctx.lineTo(x, y);
+                firstPoint = false;
+            } else {
+                ctx.lineTo(x, y);
+            }
+        }
+
+        ctx.lineTo(midX, area.y + area.height);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.strokeStyle = '#FF6B6B';
+        ctx.fillStyle = 'rgba(255, 107, 107, 0.1)';
+
+        firstPoint = true;
+        for (const ask of depthData.asks) {
+            const x = area.x + ((ask.price - minPrice) / priceRange) * area.width;
+            const y = area.y + area.height - (ask.cumulative / maxCumulative) * area.height;
+
+            if (firstPoint) {
+                ctx.moveTo(midX, area.y + area.height);
+                ctx.lineTo(x, y);
+                firstPoint = false;
+            } else {
+                ctx.lineTo(x, y);
+            }
+        }
+
+        ctx.lineTo(area.x + area.width, area.y + area.height);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.strokeStyle = '#F7931A';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 2]);
+        ctx.beginPath();
+        ctx.moveTo(midX, area.y);
+        ctx.lineTo(midX, area.y + area.height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    drawDepthScale(ctx, area, maxCumulative) {
+        ctx.fillStyle = '#B0B0B0';
+        ctx.font = '9px JetBrains Mono';
+        ctx.textAlign = 'left';
+
+        for (let i = 0; i <= 4; i++) {
+            const volume = (maxCumulative / 4) * i;
+            const y = area.y + area.height - (area.height / 4) * i;
+            ctx.fillText(this.formatSize(volume), area.x + area.width + 5, y + 3);
+        }
+    }
+
+    updateDepthTooltip(e) {
+        const rect = this.elements.depthChart.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const chartArea = {
+            x: this.depthPadding.left,
+            y: this.depthPadding.top,
+            width: this.depthWidth - this.depthPadding.left - this.depthPadding.right,
+            height: this.depthHeight - this.depthPadding.top - this.depthPadding.bottom
+        };
+
+        if (x >= chartArea.x && x <= chartArea.x + chartArea.width &&
+            y >= chartArea.y && y <= chartArea.y + chartArea.height) {
+
+            const tooltip = this.elements.depthTooltip;
+            tooltip.innerHTML = `Market Depth Chart<br>Cumulative Volume: ${this.formatSize((1 - (y - chartArea.y) / chartArea.height) * 1000)}`;
+
+            tooltip.style.left = Math.min(e.clientX + 10, window.innerWidth - 150) + 'px';
+            tooltip.style.top = Math.max(e.clientY - 10, 10) + 'px';
+            tooltip.classList.add('visible');
+        } else {
+            this.elements.depthTooltip.classList.remove('visible');
         }
     }
 
@@ -575,11 +1008,19 @@ class BybitDashboard {
         this.enhancedOrderbook = new EnhancedOrderbook();
         this.liquidations = [];
         this.klineData = null;
+        this.chartData = [];
 
         this.elements.asksContainer.innerHTML = '<div class="loading">Loading asks...</div>';
         this.elements.bidsContainer.innerHTML = '<div class="loading">Loading bids...</div>';
-        this.elements.klineContainer.innerHTML = '<div class="loading">Loading chart data...</div>';
         this.elements.liquidationsList.innerHTML = '<div class="loading">Loading liquidations...</div>';
+
+        if (this.elements.chartLoading) {
+            this.elements.chartLoading.style.display = 'flex';
+        }
+
+        if (this.chartCtx) {
+            this.chartCtx.clearRect(0, 0, this.chartWidth, this.chartHeight);
+        }
 
         this.elements.currentPrice.textContent = '-';
         this.elements.priceChange.textContent = '-';
@@ -596,8 +1037,124 @@ class BybitDashboard {
 
     clearKlineData() {
         this.klineData = null;
-        this.elements.klineContainer.innerHTML = '<div class="loading">Loading chart data...</div>';
+        this.chartData = [];
+
+        if (this.elements.chartLoading) {
+            this.elements.chartLoading.style.display = 'flex';
+        }
+
+        if (this.chartCtx) {
+            this.chartCtx.clearRect(0, 0, this.chartWidth, this.chartHeight);
+        }
+
         this.elements.klineStats.textContent = '-';
+    }
+
+    addVisualFeedback() {
+        // Add loading animations and smooth transitions
+        const elements = [
+            this.elements.symbolBtn,
+            this.elements.intervalSelect,
+            this.elements.testnetToggle
+        ];
+
+        elements.forEach(element => {
+            if (!element) return;
+
+            element.addEventListener('click', () => {
+                element.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    element.style.transform = 'scale(1)';
+                }, 100);
+            });
+        });
+
+        // Add connection pulse animation
+        this.updateConnectionAnimation();
+    }
+
+    updateConnectionAnimation() {
+        const indicator = this.elements.statusIndicator;
+        if (!indicator) return;
+
+        if (this.isConnected) {
+            indicator.style.animation = 'pulse 2s infinite';
+        } else {
+            indicator.style.animation = 'pulse 1s infinite';
+        }
+    }
+
+    toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.log('Error attempting to enable fullscreen:', err);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    }
+
+    // Enhanced error handling with user feedback
+    showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--color-bg-card);
+            border: 1px solid ${type === 'error' ? 'var(--color-ask)' : 'var(--color-bid)'};
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--color-text-primary);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        `;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.opacity = '1';
+            notification.style.transform = 'translateX(0)';
+        }, 10);
+
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 300);
+        }, 3000);
+    }
+
+    // Performance monitoring
+    startPerformanceMonitoring() {
+        let frameCount = 0;
+        let lastTime = performance.now();
+
+        const measureFPS = () => {
+            frameCount++;
+            const currentTime = performance.now();
+
+            if (currentTime - lastTime >= 1000) {
+                const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
+                if (fps < 30) {
+                    console.warn(`Low FPS detected: ${fps}`);
+                }
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+
+            requestAnimationFrame(measureFPS);
+        };
+
+        requestAnimationFrame(measureFPS);
     }
 }
 

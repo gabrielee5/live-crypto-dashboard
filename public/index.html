@@ -84,11 +84,37 @@
                     </div>
                 </header>
 
+                <div class="depth-chart-container">
+                    <canvas id="depthChart" class="depth-chart-canvas"></canvas>
+                    <div class="depth-chart-tooltip" id="depthTooltip"></div>
+                </div>
+
                 <div class="orderbook-container">
                     <div class="orderbook-table">
-                        <div class="asks-section">
-                            <div class="asks-list" id="asksContainer">
-                                <div class="loading">Loading asks...</div>
+                        <div class="orderbook-headers">
+                            <div class="orderbook-header bids-header">
+                                <span>Price</span>
+                                <span>Size</span>
+                                <span>Total</span>
+                            </div>
+                            <div class="orderbook-header asks-header">
+                                <span>Price</span>
+                                <span>Size</span>
+                                <span>Total</span>
+                            </div>
+                        </div>
+
+                        <div class="orderbook-content">
+                            <div class="bids-section">
+                                <div class="bids-list" id="bidsContainer">
+                                    <div class="loading">Loading bids...</div>
+                                </div>
+                            </div>
+
+                            <div class="asks-section">
+                                <div class="asks-list" id="asksContainer">
+                                    <div class="loading">Loading asks...</div>
+                                </div>
                             </div>
                         </div>
 
@@ -97,12 +123,6 @@
                             <div class="spread-info">
                                 <span class="mid-price" id="midPrice">-</span>
                                 <span class="spread-value" id="spreadValue">Spread: -</span>
-                            </div>
-                        </div>
-
-                        <div class="bids-section">
-                            <div class="bids-list" id="bidsContainer">
-                                <div class="loading">Loading bids...</div>
                             </div>
                         </div>
                     </div>
@@ -117,7 +137,10 @@
                     </div>
                 </header>
                 <div class="chart-container" id="klineContainer">
-                    <div class="loading">Loading chart data...</div>
+                    <canvas id="candlestickChart" class="candlestick-canvas"></canvas>
+                    <div class="chart-crosshair" id="chartCrosshair"></div>
+                    <div class="chart-tooltip" id="chartTooltip"></div>
+                    <div class="loading" id="chartLoading">Loading chart data...</div>
                 </div>
             </section>
 
