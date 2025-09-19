@@ -767,14 +767,60 @@ body {
   color: var(--color-bid);
 }
 
+/* Liquidation Size Effects */
+.liquidation-row.small {
+  background-color: rgba(255, 107, 107, 0.02);
+}
+
+.liquidation-row.medium {
+  background-color: rgba(255, 107, 107, 0.05);
+  font-weight: 500;
+}
+
 .liquidation-row.large {
   font-weight: 600;
-  background-color: rgba(247, 147, 26, 0.05);
+  background-color: rgba(247, 147, 26, 0.08);
+  border-left: 2px solid rgba(247, 147, 26, 0.3);
 }
 
 .liquidation-row.huge {
   font-weight: 600;
   background-color: rgba(247, 147, 26, 0.15);
+  border-left: 3px solid rgba(247, 147, 26, 0.6);
+  box-shadow: 0 0 8px rgba(247, 147, 26, 0.2);
+}
+
+/* Directional color variations for liquidations */
+.liquidation-row.long.medium {
+  background-color: rgba(255, 107, 107, 0.08);
+  border-left: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+.liquidation-row.long.large {
+  background-color: rgba(255, 107, 107, 0.12);
+  border-left: 2px solid rgba(255, 107, 107, 0.5);
+}
+
+.liquidation-row.long.huge {
+  background-color: rgba(255, 107, 107, 0.18);
+  border-left: 3px solid var(--color-ask);
+  box-shadow: 0 0 8px rgba(255, 107, 107, 0.3);
+}
+
+.liquidation-row.short.medium {
+  background-color: rgba(0, 212, 170, 0.08);
+  border-left: 1px solid rgba(0, 212, 170, 0.3);
+}
+
+.liquidation-row.short.large {
+  background-color: rgba(0, 212, 170, 0.12);
+  border-left: 2px solid rgba(0, 212, 170, 0.5);
+}
+
+.liquidation-row.short.huge {
+  background-color: rgba(0, 212, 170, 0.18);
+  border-left: 3px solid var(--color-bid);
+  box-shadow: 0 0 8px rgba(0, 212, 170, 0.3);
 }
 
 /* Big Trades Panel */
@@ -849,10 +895,60 @@ body {
   color: var(--color-ask);
 }
 
-.big-trade-row.whale {
+/* Big Trade Size Effects */
+.big-trade-row.small {
+  background-color: rgba(0, 212, 170, 0.02);
+}
+
+.big-trade-row.medium {
+  background-color: rgba(0, 212, 170, 0.05);
+  font-weight: 500;
+}
+
+.big-trade-row.large {
   font-weight: 600;
   background-color: rgba(247, 147, 26, 0.08);
+  border-left: 2px solid rgba(247, 147, 26, 0.4);
+}
+
+.big-trade-row.whale {
+  font-weight: 600;
+  background-color: rgba(247, 147, 26, 0.15);
   border-left: 3px solid var(--color-spread);
+  box-shadow: 0 0 10px rgba(247, 147, 26, 0.3);
+}
+
+/* Directional color variations for big trades */
+.big-trade-row.buy.medium {
+  background-color: rgba(0, 212, 170, 0.08);
+  border-left: 1px solid rgba(0, 212, 170, 0.3);
+}
+
+.big-trade-row.buy.large {
+  background-color: rgba(0, 212, 170, 0.12);
+  border-left: 2px solid rgba(0, 212, 170, 0.5);
+}
+
+.big-trade-row.buy.whale {
+  background-color: rgba(0, 212, 170, 0.18);
+  border-left: 3px solid var(--color-bid);
+  box-shadow: 0 0 10px rgba(0, 212, 170, 0.3);
+}
+
+.big-trade-row.sell.medium {
+  background-color: rgba(255, 107, 107, 0.08);
+  border-left: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+.big-trade-row.sell.large {
+  background-color: rgba(255, 107, 107, 0.12);
+  border-left: 2px solid rgba(255, 107, 107, 0.5);
+}
+
+.big-trade-row.sell.whale {
+  background-color: rgba(255, 107, 107, 0.18);
+  border-left: 3px solid var(--color-ask);
+  box-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
 }
 
 .big-trade-row.block-trade {
