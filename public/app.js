@@ -157,7 +157,8 @@ class BybitDashboard {
             klineContainer: document.getElementById('klineContainer'),
             candlestickChart: document.getElementById('candlestickChart'),
             chartCrosshair: document.getElementById('chartCrosshair'),
-            chartTooltip: document.getElementById('chartTooltip'),
+            chartInfoOverlay: document.getElementById('chartInfoOverlay'),
+            chartInfoContent: document.getElementById('chartInfoContent'),
             chartLoading: document.getElementById('chartLoading'),
             klineStats: document.getElementById('klineStats'),
 
@@ -553,12 +554,12 @@ class BybitDashboard {
             this.crosshairPosition.y = e.clientY - rect.top;
 
             this.updateCrosshair();
-            this.updateTooltip(e);
+            this.updateChartInfo(e);
         });
 
         this.elements.candlestickChart.addEventListener('mouseleave', () => {
             this.elements.chartCrosshair.style.display = 'none';
-            this.elements.chartTooltip.classList.remove('visible');
+            this.elements.chartInfoContent.classList.remove('visible');
         });
 
         this.elements.candlestickChart.addEventListener('mouseenter', () => {
@@ -707,7 +708,7 @@ class BybitDashboard {
         crosshair.style.top = this.crosshairPosition.y + 'px';
     }
 
-    updateTooltip(e) {
+    updateChartInfo(e) {
         if (!this.chartData.length) return;
 
         const rect = this.elements.candlestickChart.getBoundingClientRect();
@@ -728,24 +729,21 @@ class BybitDashboard {
             const candle = this.chartData[candleIndex];
 
             if (candle) {
-                const tooltip = this.elements.chartTooltip;
                 const time = new Date(candle.start).toLocaleString();
 
-                tooltip.innerHTML = `
-                    <div>Time: ${time}</div>
-                    <div>O: ${this.formatPrice(candle.open)}</div>
-                    <div>H: ${this.formatPrice(candle.high)}</div>
-                    <div>L: ${this.formatPrice(candle.low)}</div>
-                    <div>C: ${this.formatPrice(candle.close)}</div>
-                    <div>Vol: ${this.formatVolume(candle.volume)}</div>
+                this.elements.chartInfoContent.innerHTML = `
+                    <span class="info-row">Time: ${time}</span>
+                    <span class="info-row">O: ${this.formatPrice(candle.open)}</span>
+                    <span class="info-row">H: ${this.formatPrice(candle.high)}</span>
+                    <span class="info-row">L: ${this.formatPrice(candle.low)}</span>
+                    <span class="info-row">C: ${this.formatPrice(candle.close)}</span>
+                    <span class="info-row">Vol: ${this.formatVolume(candle.volume)}</span>
                 `;
 
-                tooltip.style.left = Math.min(e.clientX + 10, window.innerWidth - 200) + 'px';
-                tooltip.style.top = Math.max(e.clientY - 10, 10) + 'px';
-                tooltip.classList.add('visible');
+                this.elements.chartInfoContent.classList.add('visible');
             }
         } else {
-            this.elements.chartTooltip.classList.remove('visible');
+            this.elements.chartInfoContent.classList.remove('visible');
         }
     }
 

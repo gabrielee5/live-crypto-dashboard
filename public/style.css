@@ -627,6 +627,43 @@ body {
   opacity: 1;
 }
 
+/* Chart info overlay for fixed candle information */
+.chart-info-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.chart-info-content {
+  display: inline-block;
+  background: rgba(30, 30, 30, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-primary);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.chart-info-content.visible {
+  opacity: 1;
+}
+
+.chart-info-content .info-row {
+  display: inline-block;
+  margin-right: 16px;
+}
+
+.chart-info-content .info-row:last-child {
+  margin-right: 0;
+}
+
 #chartLoading {
   position: absolute;
   top: 0;
