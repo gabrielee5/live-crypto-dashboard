@@ -300,10 +300,12 @@ class BybitDashboard {
 
         this.elements.alarmToggle.addEventListener('change', () => {
             this.toggleAlarm(this.elements.alarmToggle.checked);
+            this.updateToggleState(this.elements.alarmToggle.parentElement, this.elements.alarmToggle.checked);
         });
 
         this.elements.themeToggle.addEventListener('change', () => {
             this.toggleTheme(this.elements.themeToggle.checked);
+            this.updateToggleState(this.elements.themeToggle.parentElement, this.elements.themeToggle.checked);
         });
 
         this.elements.tradeMinSize.addEventListener('change', () => {
@@ -436,6 +438,11 @@ class BybitDashboard {
 
         this.elements.themeToggle.checked = isLightMode;
         document.body.classList.toggle('light-theme', isLightMode);
+        this.updateToggleState(this.elements.themeToggle.parentElement, isLightMode);
+    }
+
+    updateToggleState(toggleElement, isActive) {
+        toggleElement.classList.toggle('active', isActive);
     }
 
     toggleTheme(lightMode) {
