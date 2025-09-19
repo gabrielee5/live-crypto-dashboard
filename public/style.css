@@ -819,6 +819,13 @@ body {
   transition: opacity 0.2s ease;
 }
 
+/* Light theme chart info styling */
+body.light-theme .chart-info-content {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: var(--color-text-primary);
+}
+
 .chart-info-content.visible {
   opacity: 1;
 }

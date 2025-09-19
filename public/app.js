@@ -694,7 +694,8 @@ class BybitDashboard {
     }
 
     drawGrid(ctx, area, minPrice, maxPrice) {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        const isLightTheme = document.body.classList.contains('light-theme');
+        ctx.strokeStyle = isLightTheme ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.1)';
         ctx.lineWidth = 1;
 
         const gridLines = 8;
@@ -914,7 +915,8 @@ class BybitDashboard {
     }
 
     drawDepthGrid(ctx, area) {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        const isLightTheme = document.body.classList.contains('light-theme');
+        ctx.strokeStyle = isLightTheme ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)';
         ctx.lineWidth = 1;
 
         for (let i = 0; i <= 4; i++) {
