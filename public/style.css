@@ -242,7 +242,7 @@ body {
 /* Main Layout - Responsive Grid */
 .dashboard-main {
   display: grid;
-  grid-template-columns: 2fr 3fr 1.5fr;
+  grid-template-columns: 2fr 3fr 1fr; /* 1.2 */
   grid-template-rows: 1fr 1fr;
   gap: 1px;
   background: #0A0A0A;
@@ -985,7 +985,7 @@ body {
 /* Responsive Design */
 @media (min-width: 1920px) {
   .dashboard-main {
-    grid-template-columns: 2.2fr 3fr 1.8fr;
+    grid-template-columns: 2.2fr 3fr 1.2fr; /* 1,4 */
   }
 
   .orderbook-row {
@@ -1008,7 +1008,7 @@ body {
 
 @media (max-width: 1400px) {
   .dashboard-main {
-    grid-template-columns: 1.8fr 3fr 1.3fr;
+    grid-template-columns: 1.8fr 3fr 1fr; /* 1,1 */
   }
 
   .orderbook-row {
