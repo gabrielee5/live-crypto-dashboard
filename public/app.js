@@ -1143,8 +1143,8 @@ class BybitDashboard {
         this.updateBigTradesStats();
         this.flashBigTrade();
 
-        // Trigger alarm for whale trades (>= $500K)
-        if (trade.value >= 500000) {
+        // Trigger alarm for whale trades (>= $250K)
+        if (trade.value >= 250000) {
             this.playAlarmSound('bigTrade');
         }
     }
