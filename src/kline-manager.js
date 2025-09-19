@@ -1,10 +1,15 @@
 const EventEmitter = require('events');
+const axios = require('axios');
 
 class KlineManager extends EventEmitter {
-    constructor() {
+    constructor(isTestnet = false) {
         super();
         this.klineData = new Map();
         this.maxCandles = 100;
+        this.isTestnet = isTestnet;
+        this.baseUrl = isTestnet
+            ? 'https://api-testnet.bybit.com'
+            : 'https://api.bybit.com';
     }
 
     processMessage(message) {
@@ -216,6 +221,120 @@ class KlineManager extends EventEmitter {
 
     getSupportedIntervals() {
         return ['1', '3', '5', '15', '30', '60', '120', '240', '360', '720', 'D', 'W', 'M'];
+    }
+
+    async fetchHistoricalData(symbol, interval, limit = 100) {
+        try {
+            const params = {
+                category: 'linear',
+                symbol,
+                interval,
+                limit: Math.min(limit, 1000)
+            };
+
+            const response = await axios.get(`${this.baseUrl}/v5/market/kline`, { params });
+
+            if (response.data && response.data.retCode === 0 && response.data.result) {
+                const klines = response.data.result.list;
+
+                return klines.map(kline => ({
+                    start: parseInt(kline[0]),
+                    end: parseInt(kline[0]) + this.getIntervalMs(interval) - 1,
+                    interval,
+                    open: parseFloat(kline[1]),
+                    high: parseFloat(kline[2]),
+                    low: parseFloat(kline[3]),
+                    close: parseFloat(kline[4]),
+                    volume: parseFloat(kline[5]),
+                    turnover: parseFloat(kline[6]),
+                    confirmed: true,
+                    status: 'closed',
+                    change: parseFloat(kline[4]) - parseFloat(kline[1]),
+                    changePercent: parseFloat(kline[1]) > 0 ? ((parseFloat(kline[4]) - parseFloat(kline[1])) / parseFloat(kline[1])) * 100 : 0,
+                    direction: parseFloat(kline[4]) >= parseFloat(kline[1]) ? 'bull' : 'bear',
+                    timestamp: parseInt(kline[0])
+                })).reverse();
+            }
+
+            throw new Error('Invalid response from Bybit API');
+        } catch (error) {
+            console.error(`Failed to fetch historical data for ${symbol}:`, error.message);
+            throw error;
+        }
+    }
+
+    getIntervalMs(interval) {
+        const intervals = {
+            '1': 60 * 1000,
+            '3': 3 * 60 * 1000,
+            '5': 5 * 60 * 1000,
+            '15': 15 * 60 * 1000,
+            '30': 30 * 60 * 1000,
+            '60': 60 * 60 * 1000,
+            '120': 2 * 60 * 60 * 1000,
+            '240': 4 * 60 * 60 * 1000,
+            '360': 6 * 60 * 60 * 1000,
+            '720': 12 * 60 * 60 * 1000,
+            'D': 24 * 60 * 60 * 1000,
+            'W': 7 * 24 * 60 * 60 * 1000,
+            'M': 30 * 24 * 60 * 60 * 1000
+        };
+        return intervals[interval] || 5 * 60 * 1000;
+    }
+
+    async initializeHistoricalData(symbol, interval, limit = 100) {
+        try {
+            const key = `${symbol}_${interval}`;
+
+            if (this.klineData.has(key)) {
+                const data = this.klineData.get(key);
+                if (data.candles.length > 0) {
+                    console.log(`Historical data already exists for ${symbol} ${interval}`);
+                    return data.candles;
+                }
+            }
+
+            console.log(`Fetching historical data for ${symbol} ${interval}...`);
+            const historicalCandles = await this.fetchHistoricalData(symbol, interval, limit);
+
+            if (!this.klineData.has(key)) {
+                this.klineData.set(key, {
+                    symbol,
+                    interval,
+                    candles: [],
+                    currentCandle: null
+                });
+            }
+
+            const data = this.klineData.get(key);
+            data.candles = historicalCandles.slice(-this.maxCandles);
+
+            console.log(`Loaded ${data.candles.length} historical candles for ${symbol} ${interval}`);
+
+            this.emit('historicalDataLoaded', {
+                symbol,
+                interval,
+                candles: data.candles,
+                candleCount: data.candles.length
+            });
+
+            return data.candles;
+        } catch (error) {
+            console.error(`Failed to initialize historical data for ${symbol} ${interval}:`, error.message);
+            this.emit('error', {
+                message: `Failed to load historical data: ${error.message}`,
+                symbol,
+                interval
+            });
+            return [];
+        }
+    }
+
+    setTestnet(isTestnet) {
+        this.isTestnet = isTestnet;
+        this.baseUrl = isTestnet
+            ? 'https://api-testnet.bybit.com'
+            : 'https://api.bybit.com';
     }
 }
 

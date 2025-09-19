@@ -26,7 +26,7 @@ class BybitDashboardServer {
 
         this.wsClient = null;
         this.orderbookManager = new OrderbookManager();
-        this.klineManager = new KlineManager();
+        this.klineManager = new KlineManager(this.isTestnet);
         this.liquidationManager = new LiquidationManager();
         this.bigTradesManager = new BigTradesManager();
 
@@ -103,9 +103,10 @@ class BybitDashboardServer {
             });
 
             socket.emit('orderbook', this.orderbookManager.getOrderbook(this.currentSymbol));
-            socket.emit('kline', this.klineManager.getKlineData(this.currentSymbol, this.currentInterval));
             socket.emit('liquidations', this.liquidationManager.getLiquidations(this.currentSymbol));
             socket.emit('bigTrades', this.bigTradesManager.getFilteredTrades());
+
+            this.loadHistoricalKlineData(socket);
 
             socket.on('changeSymbol', (data) => {
                 if (data && data.symbol) {
@@ -164,6 +165,20 @@ class BybitDashboardServer {
                 this.io.emit('bigTrades', this.bigTradesManager.getFilteredTrades());
             }
         });
+
+        this.klineManager.on('historicalDataLoaded', (data) => {
+            this.io.emit('kline', {
+                symbol: data.symbol,
+                interval: data.interval,
+                allCandles: data.candles,
+                candle: data.candles[data.candles.length - 1],
+                isConfirmed: true
+            });
+        });
+
+        this.klineManager.on('error', (error) => {
+            this.io.emit('error', error);
+        });
     }
 
     connectToBybit() {
@@ -215,6 +230,8 @@ class BybitDashboardServer {
         this.wsClient.subscribe(`publicTrade.${this.currentSymbol}`);
 
         console.log(`Subscribed to data for ${this.currentSymbol} with ${this.currentInterval} interval`);
+
+        this.klineManager.initializeHistoricalData(this.currentSymbol, this.currentInterval);
     }
 
     unsubscribeFromData(symbol = null, interval = null) {
@@ -282,6 +299,7 @@ class BybitDashboardServer {
 
         if (this.wsClient && this.wsClient.isConnected) {
             this.wsClient.subscribe(`kline.${this.currentInterval}.${this.currentSymbol}`);
+            this.klineManager.initializeHistoricalData(this.currentSymbol, this.currentInterval);
         }
 
         this.io.emit('intervalChanged', { interval: this.currentInterval });
@@ -302,11 +320,50 @@ class BybitDashboardServer {
 
         this.orderbookManager.clear();
         this.klineManager.clear();
+        this.klineManager.setTestnet(testnet);
         this.liquidationManager.clear();
 
         this.connectToBybit();
 
         this.io.emit('testnetChanged', { testnet: this.isTestnet });
+    }
+
+    async loadHistoricalKlineData(socket = null) {
+        try {
+            const existingData = this.klineManager.getKlineData(this.currentSymbol, this.currentInterval);
+
+            if (existingData && existingData.candles && existingData.candles.length > 0) {
+                const klineData = {
+                    symbol: this.currentSymbol,
+                    interval: this.currentInterval,
+                    allCandles: existingData.candles,
+                    candle: existingData.candles[existingData.candles.length - 1],
+                    isConfirmed: true
+                };
+
+                if (socket) {
+                    socket.emit('kline', klineData);
+                } else {
+                    this.io.emit('kline', klineData);
+                }
+                return;
+            }
+
+            await this.klineManager.initializeHistoricalData(this.currentSymbol, this.currentInterval);
+        } catch (error) {
+            console.error('Error loading historical kline data:', error);
+            const errorData = {
+                message: `Failed to load chart data: ${error.message}`,
+                symbol: this.currentSymbol,
+                interval: this.currentInterval
+            };
+
+            if (socket) {
+                socket.emit('error', errorData);
+            } else {
+                this.io.emit('error', errorData);
+            }
+        }
     }
 
     start(port = 3000) {
