@@ -140,6 +140,9 @@ class BybitDashboard {
             priceChange: document.getElementById('priceChange'),
             spread: document.getElementById('spread'),
             volume24h: document.getElementById('volume24h'),
+            price24hPcnt: document.getElementById('price24hPcnt'),
+            openInterestValue: document.getElementById('openInterestValue'),
+            fundingRate: document.getElementById('fundingRate'),
 
             // Enhanced orderbook elements
             bidVolume: document.getElementById('bidVolume'),
@@ -236,6 +239,11 @@ class BybitDashboard {
 
         this.socket.on('bigTrades', (trades) => {
             this.queueUpdate(() => this.updateBigTrades(trades));
+        });
+
+        this.socket.on('ticker', (ticker) => {
+            console.log('Ticker received:', ticker);
+            this.queueUpdate(() => this.updateTicker(ticker));
         });
 
         this.socket.on('symbolChanged', (data) => {
@@ -964,6 +972,34 @@ class BybitDashboard {
         this.elements.klineStats.textContent = `${this.klineData.allCandles.length} candles (${status})`;
     }
 
+    updateTicker(ticker) {
+        if (!ticker) {
+            console.log('updateTicker called with null ticker');
+            return;
+        }
+
+        console.log('updateTicker called with:', ticker);
+
+        // Update 24h price change percentage
+        const priceChange = parseFloat(ticker.price24hPcnt);
+        console.log('Updating price24hPcnt element:', this.elements.price24hPcnt);
+        this.elements.price24hPcnt.textContent = `${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%`;
+        this.elements.price24hPcnt.className = `stat-value ${priceChange >= 0 ? 'positive' : 'negative'}`;
+
+        // Update 24h volume
+        this.elements.volume24h.textContent = this.formatVolume(parseFloat(ticker.volume24h));
+
+        // Update open interest value
+        this.elements.openInterestValue.textContent = this.formatValue(parseFloat(ticker.openInterestValue));
+
+        // Update funding rate
+        const fundingRate = parseFloat(ticker.fundingRate) * 100;
+        this.elements.fundingRate.textContent = `${fundingRate >= 0 ? '+' : ''}${fundingRate.toFixed(4)}%`;
+        this.elements.fundingRate.className = `stat-value ${fundingRate >= 0 ? 'positive' : 'negative'}`;
+
+        console.log('Ticker update completed');
+    }
+
     updateLiquidations(liquidations) {
         this.liquidations = liquidations.slice(0, 100);
         this.renderLiquidations();
@@ -1141,6 +1177,9 @@ class BybitDashboard {
         this.elements.priceChange.textContent = '-';
         this.elements.spread.textContent = '-';
         this.elements.volume24h.textContent = '-';
+        this.elements.price24hPcnt.textContent = '-';
+        this.elements.openInterestValue.textContent = '-';
+        this.elements.fundingRate.textContent = '-';
         this.elements.bidVolume.textContent = '-';
         this.elements.askVolume.textContent = '-';
         this.elements.klineStats.textContent = '-';

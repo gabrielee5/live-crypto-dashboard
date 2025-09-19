@@ -8,6 +8,7 @@ const OrderbookManager = require('./src/orderbook-manager');
 const KlineManager = require('./src/kline-manager');
 const LiquidationManager = require('./src/liquidation-manager');
 const BigTradesManager = require('./src/big-trades-manager');
+const TickerManager = require('./src/ticker-manager');
 
 class BybitDashboardServer {
     constructor() {
@@ -29,6 +30,7 @@ class BybitDashboardServer {
         this.klineManager = new KlineManager(this.isTestnet);
         this.liquidationManager = new LiquidationManager();
         this.bigTradesManager = new BigTradesManager();
+        this.tickerManager = new TickerManager();
 
         this.currentSymbol = 'BTCUSDT';
         this.currentInterval = '5';
@@ -105,6 +107,7 @@ class BybitDashboardServer {
             socket.emit('orderbook', this.orderbookManager.getOrderbook(this.currentSymbol));
             socket.emit('liquidations', this.liquidationManager.getLiquidations(this.currentSymbol));
             socket.emit('bigTrades', this.bigTradesManager.getFilteredTrades());
+            socket.emit('ticker', this.tickerManager.getTicker(this.currentSymbol));
 
             this.loadHistoricalKlineData(socket);
 
@@ -166,6 +169,13 @@ class BybitDashboardServer {
             }
         });
 
+        this.tickerManager.on('tickerUpdate', (ticker) => {
+            if (ticker.symbol === this.currentSymbol) {
+                console.log(`Ticker update for ${ticker.symbol}: 24h: ${ticker.price24hPcnt}%`);
+                this.io.emit('ticker', ticker);
+            }
+        });
+
         this.klineManager.on('historicalDataLoaded', (data) => {
             this.io.emit('kline', {
                 symbol: data.symbol,
@@ -218,6 +228,7 @@ class BybitDashboardServer {
             this.klineManager.processMessage(message);
             this.liquidationManager.processMessage(message);
             this.bigTradesManager.processMessage(message);
+            this.tickerManager.processMessage(message);
         });
     }
 
@@ -228,6 +239,7 @@ class BybitDashboardServer {
         this.wsClient.subscribe(`kline.${this.currentInterval}.${this.currentSymbol}`);
         this.wsClient.subscribe(`allLiquidation.${this.currentSymbol}`);
         this.wsClient.subscribe(`publicTrade.${this.currentSymbol}`);
+        this.wsClient.subscribe(`tickers.${this.currentSymbol}`);
 
         console.log(`Subscribed to data for ${this.currentSymbol} with ${this.currentInterval} interval`);
 
@@ -244,6 +256,7 @@ class BybitDashboardServer {
         this.wsClient.unsubscribe(`kline.${targetInterval}.${targetSymbol}`);
         this.wsClient.unsubscribe(`allLiquidation.${targetSymbol}`);
         this.wsClient.unsubscribe(`publicTrade.${targetSymbol}`);
+        this.wsClient.unsubscribe(`tickers.${targetSymbol}`);
     }
 
     changeSymbol(newSymbol) {
@@ -268,6 +281,7 @@ class BybitDashboardServer {
         this.orderbookManager.clear(this.currentSymbol);
         this.klineManager.clear(this.currentSymbol);
         this.liquidationManager.clear(this.currentSymbol);
+        this.tickerManager.clear(this.currentSymbol);
 
         this.subscribeToData();
 
@@ -322,6 +336,7 @@ class BybitDashboardServer {
         this.klineManager.clear();
         this.klineManager.setTestnet(testnet);
         this.liquidationManager.clear();
+        this.tickerManager.clear();
 
         this.connectToBybit();
 

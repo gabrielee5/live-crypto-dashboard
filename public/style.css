@@ -156,6 +156,14 @@ body {
   color: var(--color-text-primary);
 }
 
+.stat-value.positive {
+  color: var(--color-bid);
+}
+
+.stat-value.negative {
+  color: var(--color-ask);
+}
+
 .header-right {
   display: flex;
   align-items: center;
