@@ -5,13 +5,11 @@
   --color-ask: #FF6B6B;
   --color-spread: #F7931A;
 
-  /* Background Colors */
+  /* Dark Theme (Default) */
   --color-bg-dark: #1E1E1E;
   --color-bg-darker: #161616;
   --color-bg-card: #2D2D2D;
   --color-bg-panel: #252525;
-
-  /* Text Colors */
   --color-text-primary: #FFFFFF;
   --color-text-secondary: #B0B0B0;
   --color-text-muted: #666666;
@@ -32,6 +30,60 @@
   /* Animations */
   --anim-fast: 0.15s ease-out;
   --anim-medium: 0.3s ease-out;
+}
+
+/* Light Theme Variables */
+body.light-theme {
+  --color-bg-dark: #FFFFFF;
+  --color-bg-darker: #F8F9FA;
+  --color-bg-card: #FFFFFF;
+  --color-bg-panel: #F1F3F4;
+  --color-text-primary: #1A1A1A;
+  --color-text-secondary: #5F6368;
+  --color-text-muted: #9AA0A6;
+}
+
+/* Light theme specific adjustments */
+body.light-theme .dashboard-main {
+  background: #E8EAED;
+}
+
+body.light-theme .orderbook-row {
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+body.light-theme .orderbook-row:hover {
+  background-color: rgba(0,0,0,0.03);
+}
+
+body.light-theme .liquidation-row,
+body.light-theme .big-trade-row {
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+body.light-theme .bids-section {
+  border-right: 1px solid #E8EAED;
+}
+
+body.light-theme .orderbook-content {
+  background: #E8EAED;
+}
+
+body.light-theme .dashboard-header {
+  border-bottom: 1px solid #E8EAED;
+}
+
+body.light-theme .panel-header {
+  border-bottom: 1px solid #E8EAED;
+}
+
+body.light-theme .spread-indicator {
+  border-top: 1px solid #E8EAED;
+  border-bottom: 1px solid #E8EAED;
+}
+
+body.light-theme .depth-chart-container {
+  border-bottom: 1px solid #E8EAED;
 }
 
 * {
@@ -239,12 +291,25 @@ body {
   opacity: 0.8;
 }
 
-.testnet-toggle {
+.alarm-toggle,
+.theme-toggle {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
   cursor: pointer;
+  transition: opacity var(--anim-fast);
+}
+
+.alarm-toggle:hover,
+.theme-toggle:hover {
+  opacity: 0.8;
+}
+
+.alarm-toggle input[type="checkbox"]:checked + span,
+.theme-toggle input[type="checkbox"]:checked + span {
+  color: var(--color-spread);
+  font-weight: 600;
 }
 
 /* Main Layout - Responsive Grid */

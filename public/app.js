@@ -117,10 +117,14 @@ class BybitDashboard {
         this.klineData = null;
         this.updateQueue = [];
         this.isUpdating = false;
+        this.alarmEnabled = false;
+        this.audioContext = null;
+        this.initializeAudio();
 
         this.initializeElements();
         this.initializeSocket();
         this.setupEventListeners();
+        this.initializeTheme();
         this.startUpdateLoop();
         this.startPerformanceMonitoring();
         console.log('Enhanced Dashboard initialization complete');
@@ -135,7 +139,8 @@ class BybitDashboard {
             symbolInput: document.getElementById('symbolInput'),
             symbolBtn: document.getElementById('symbolBtn'),
             intervalSelect: document.getElementById('intervalSelect'),
-            testnetToggle: document.getElementById('testnetToggle'),
+            alarmToggle: document.getElementById('alarmToggle'),
+            themeToggle: document.getElementById('themeToggle'),
             currentPrice: document.getElementById('currentPrice'),
             priceChange: document.getElementById('priceChange'),
             spread: document.getElementById('spread'),
@@ -293,8 +298,12 @@ class BybitDashboard {
             }
         });
 
-        this.elements.testnetToggle.addEventListener('change', () => {
-            this.toggleTestnet(this.elements.testnetToggle.checked);
+        this.elements.alarmToggle.addEventListener('change', () => {
+            this.toggleAlarm(this.elements.alarmToggle.checked);
+        });
+
+        this.elements.themeToggle.addEventListener('change', () => {
+            this.toggleTheme(this.elements.themeToggle.checked);
         });
 
         this.elements.tradeMinSize.addEventListener('change', () => {
@@ -415,8 +424,56 @@ class BybitDashboard {
         this.socket.emit('changeInterval', { interval });
     }
 
-    toggleTestnet(testnet) {
-        this.socket.emit('toggleTestnet', { testnet });
+    toggleAlarm(enabled) {
+        this.alarmEnabled = enabled;
+        console.log(`Alarm ${enabled ? 'enabled' : 'disabled'}`);
+    }
+
+    initializeTheme() {
+        // Default to dark mode
+        const savedTheme = localStorage.getItem('dashboard-theme') || 'dark';
+        const isLightMode = savedTheme === 'light';
+
+        this.elements.themeToggle.checked = isLightMode;
+        document.body.classList.toggle('light-theme', isLightMode);
+    }
+
+    toggleTheme(lightMode) {
+        document.body.classList.toggle('light-theme', lightMode);
+        localStorage.setItem('dashboard-theme', lightMode ? 'light' : 'dark');
+        console.log(`Theme switched to ${lightMode ? 'light' : 'dark'} mode`);
+    }
+
+    initializeAudio() {
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+            console.warn('Web Audio API not supported');
+        }
+    }
+
+    playAlarmSound(type = 'liquidation') {
+        if (!this.alarmEnabled || !this.audioContext) return;
+
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+
+        if (type === 'liquidation') {
+            oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime + 0.1);
+        } else if (type === 'bigTrade') {
+            oscillator.frequency.setValueAtTime(600, this.audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(900, this.audioContext.currentTime + 0.1);
+        }
+
+        gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + 0.3);
     }
 
     changeBigTradesFilter(minValue) {
@@ -1014,6 +1071,11 @@ class BybitDashboard {
         this.renderLiquidations();
         this.updateLiquidationStats();
         this.flashLiquidation();
+
+        // Trigger alarm for big liquidations (>= $100K)
+        if (liquidation.value >= 100000) {
+            this.playAlarmSound('liquidation');
+        }
     }
 
     renderLiquidations() {
@@ -1071,6 +1133,11 @@ class BybitDashboard {
         this.renderBigTrades();
         this.updateBigTradesStats();
         this.flashBigTrade();
+
+        // Trigger alarm for whale trades (>= $500K)
+        if (trade.value >= 500000) {
+            this.playAlarmSound('bigTrade');
+        }
     }
 
     renderBigTrades() {
@@ -1210,7 +1277,8 @@ class BybitDashboard {
         const elements = [
             this.elements.symbolBtn,
             this.elements.intervalSelect,
-            this.elements.testnetToggle
+            this.elements.alarmToggle,
+            this.elements.themeToggle
         ];
 
         elements.forEach(element => {
