@@ -1051,9 +1051,9 @@ class BybitDashboard {
     }
 
     flashLiquidation() {
-        this.elements.liquidationsList.classList.add('flash');
+        this.elements.liquidationsList.classList.add('liquidation-flash');
         setTimeout(() => {
-            this.elements.liquidationsList.classList.remove('flash');
+            this.elements.liquidationsList.classList.remove('liquidation-flash');
         }, 500);
     }
 
