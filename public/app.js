@@ -981,7 +981,7 @@ class BybitDashboard {
         console.log('updateTicker called with:', ticker);
 
         // Update 24h price change percentage
-        const priceChange = parseFloat(ticker.price24hPcnt);
+        const priceChange = parseFloat(ticker.price24hPcnt) * 100; // Convert decimal to percentage
         console.log('Updating price24hPcnt element:', this.elements.price24hPcnt);
         this.elements.price24hPcnt.textContent = `${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%`;
         this.elements.price24hPcnt.className = `stat-value ${priceChange >= 0 ? 'positive' : 'negative'}`;
