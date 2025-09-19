@@ -1,24 +1,135 @@
+class EnhancedOrderbook {
+    constructor(maxDepth = 50) {
+        this.maxDepth = maxDepth;
+        this.bids = new Map();
+        this.asks = new Map();
+        this.totalBidVolume = 0;
+        this.totalAskVolume = 0;
+        this.lastUpdate = Date.now();
+    }
+
+    updateData(orderbook) {
+        if (!orderbook) return;
+
+        this.bids.clear();
+        this.asks.clear();
+
+        if (orderbook.bids) {
+            orderbook.bids.forEach(bid => {
+                this.bids.set(bid.price.toString(), bid.size);
+            });
+        }
+
+        if (orderbook.asks) {
+            orderbook.asks.forEach(ask => {
+                this.asks.set(ask.price.toString(), ask.size);
+            });
+        }
+
+        this.calculateTotalVolumes();
+        this.lastUpdate = Date.now();
+    }
+
+    calculateTotalVolumes() {
+        this.totalBidVolume = Array.from(this.bids.values()).reduce((sum, size) => sum + size, 0);
+        this.totalAskVolume = Array.from(this.asks.values()).reduce((sum, size) => sum + size, 0);
+    }
+
+    calculateDepthData() {
+        const bids = Array.from(this.bids.entries())
+            .sort(([a], [b]) => parseFloat(b) - parseFloat(a))
+            .slice(0, this.maxDepth);
+
+        const asks = Array.from(this.asks.entries())
+            .sort(([a], [b]) => parseFloat(a) - parseFloat(b))
+            .slice(0, this.maxDepth);
+
+        let bidCumulative = 0, askCumulative = 0;
+        const maxBidVolume = Math.max(...bids.map(([_, size]) => parseFloat(size)));
+        const maxAskVolume = Math.max(...asks.map(([_, size]) => parseFloat(size)));
+
+        return {
+            bids: bids.map(([price, size]) => {
+                bidCumulative += parseFloat(size);
+                return {
+                    price: parseFloat(price),
+                    size: parseFloat(size),
+                    cumulative: bidCumulative,
+                    percentage: maxBidVolume > 0 ? (parseFloat(size) / maxBidVolume) * 100 : 0
+                };
+            }),
+            asks: asks.map(([price, size]) => {
+                askCumulative += parseFloat(size);
+                return {
+                    price: parseFloat(price),
+                    size: parseFloat(size),
+                    cumulative: askCumulative,
+                    percentage: maxAskVolume > 0 ? (parseFloat(size) / maxAskVolume) * 100 : 0
+                };
+            })
+        };
+    }
+
+    getSpreadInfo() {
+        if (this.bids.size === 0 || this.asks.size === 0) return null;
+
+        const bestBid = Math.max(...Array.from(this.bids.keys()).map(parseFloat));
+        const bestAsk = Math.min(...Array.from(this.asks.keys()).map(parseFloat));
+        const spread = bestAsk - bestBid;
+        const midPrice = (bestBid + bestAsk) / 2;
+        const spreadPercent = (spread / midPrice) * 100;
+
+        return {
+            bestBid,
+            bestAsk,
+            spread,
+            spreadPercent: spreadPercent.toFixed(4),
+            midPrice
+        };
+    }
+
+    getImbalanceInfo() {
+        const total = this.totalBidVolume + this.totalAskVolume;
+        if (total === 0) return { bidPercentage: 50, askPercentage: 50, ratio: 1 };
+
+        const bidPercentage = (this.totalBidVolume / total) * 100;
+        const askPercentage = (this.totalAskVolume / total) * 100;
+        const ratio = this.totalBidVolume / this.totalAskVolume;
+
+        return {
+            bidPercentage: bidPercentage.toFixed(1),
+            askPercentage: askPercentage.toFixed(1),
+            ratio: ratio.toFixed(2)
+        };
+    }
+}
+
 class BybitDashboard {
     constructor() {
-        console.log('Initializing Bybit Dashboard...');
+        console.log('Initializing Enhanced Bybit Dashboard...');
         this.socket = null;
         this.currentSymbol = 'BTCUSDT';
         this.currentInterval = '5';
         this.isConnected = false;
-        this.orderbook = null;
+        this.enhancedOrderbook = new EnhancedOrderbook();
         this.liquidations = [];
         this.klineData = null;
+        this.updateQueue = [];
+        this.isUpdating = false;
 
         this.initializeElements();
         this.initializeSocket();
         this.setupEventListeners();
-        console.log('Dashboard initialization complete');
+        this.startUpdateLoop();
+        console.log('Enhanced Dashboard initialization complete');
     }
 
     initializeElements() {
         this.elements = {
             statusIndicator: document.getElementById('statusIndicator'),
             statusText: document.getElementById('statusText'),
+            latency: document.getElementById('latency'),
+            symbolDisplay: document.getElementById('symbolDisplay'),
             symbolInput: document.getElementById('symbolInput'),
             symbolBtn: document.getElementById('symbolBtn'),
             intervalSelect: document.getElementById('intervalSelect'),
@@ -27,10 +138,20 @@ class BybitDashboard {
             priceChange: document.getElementById('priceChange'),
             spread: document.getElementById('spread'),
             volume24h: document.getElementById('volume24h'),
-            orderbookStats: document.getElementById('orderbookStats'),
+
+            // Enhanced orderbook elements
+            bidVolume: document.getElementById('bidVolume'),
+            askVolume: document.getElementById('askVolume'),
+            imbalanceBar: document.getElementById('imbalanceBar'),
+            bidPortion: document.getElementById('bidPortion'),
+            askPortion: document.getElementById('askPortion'),
+            imbalanceText: document.getElementById('imbalanceText'),
             asksContainer: document.getElementById('asksContainer'),
             bidsContainer: document.getElementById('bidsContainer'),
-            spreadInfo: document.getElementById('spreadInfo'),
+            midPrice: document.getElementById('midPrice'),
+            spreadValue: document.getElementById('spreadValue'),
+
+            // Chart and liquidations
             klineContainer: document.getElementById('klineContainer'),
             klineStats: document.getElementById('klineStats'),
             liquidationsList: document.getElementById('liquidationsList'),
@@ -56,6 +177,7 @@ class BybitDashboard {
 
         this.socket.on('connect', () => {
             console.log('Connected to server');
+            this.updateConnectionStatus(true);
         });
 
         this.socket.on('disconnect', () => {
@@ -71,24 +193,25 @@ class BybitDashboard {
         });
 
         this.socket.on('orderbook', (data) => {
-            this.updateOrderbook(data);
+            this.queueUpdate(() => this.updateOrderbook(data));
         });
 
         this.socket.on('kline', (data) => {
-            this.updateKline(data);
+            this.queueUpdate(() => this.updateKline(data));
         });
 
         this.socket.on('liquidation', (liquidation) => {
-            this.addLiquidation(liquidation);
+            this.queueUpdate(() => this.addLiquidation(liquidation));
         });
 
         this.socket.on('liquidations', (liquidations) => {
-            this.updateLiquidations(liquidations);
+            this.queueUpdate(() => this.updateLiquidations(liquidations));
         });
 
         this.socket.on('symbolChanged', (data) => {
             this.currentSymbol = data.symbol;
             this.elements.symbolInput.value = data.symbol;
+            this.elements.symbolDisplay.textContent = data.symbol;
             this.clearData();
         });
 
@@ -109,7 +232,7 @@ class BybitDashboard {
     }
 
     setupEventListeners() {
-        document.getElementById('symbolBtn').addEventListener('click', () => {
+        this.elements.symbolBtn.addEventListener('click', () => {
             const symbol = this.elements.symbolInput.value.trim().toUpperCase();
             if (symbol && symbol !== this.currentSymbol) {
                 this.changeSymbol(symbol);
@@ -135,16 +258,69 @@ class BybitDashboard {
         this.elements.testnetToggle.addEventListener('change', () => {
             this.toggleTestnet(this.elements.testnetToggle.checked);
         });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+
+            switch(e.key) {
+                case ' ':
+                    e.preventDefault();
+                    this.toggleConnection();
+                    break;
+                case 'r':
+                case 'R':
+                    e.preventDefault();
+                    this.refreshData();
+                    break;
+                case '1':
+                    this.elements.intervalSelect.value = '1';
+                    this.changeInterval('1');
+                    break;
+                case '5':
+                    this.elements.intervalSelect.value = '5';
+                    this.changeInterval('5');
+                    break;
+            }
+        });
+    }
+
+    queueUpdate(updateFn) {
+        this.updateQueue.push(updateFn);
+    }
+
+    startUpdateLoop() {
+        setInterval(() => {
+            if (this.isUpdating || this.updateQueue.length === 0) return;
+
+            this.isUpdating = true;
+            const update = this.updateQueue.shift();
+
+            try {
+                update();
+            } catch (error) {
+                console.error('Error during update:', error);
+            }
+
+            this.isUpdating = false;
+        }, 16); // ~60fps
     }
 
     updateConnectionStatus(connected) {
         this.isConnected = connected;
         this.elements.statusIndicator.className = `status-indicator ${connected ? 'connected' : 'disconnected'}`;
         this.elements.statusText.textContent = connected ? 'Connected' : 'Disconnected';
+
+        if (connected) {
+            this.elements.latency.textContent = '< 100ms';
+        } else {
+            this.elements.latency.textContent = '';
+        }
     }
 
     updateControls() {
         this.elements.symbolInput.value = this.currentSymbol;
+        this.elements.symbolDisplay.textContent = this.currentSymbol;
         this.elements.intervalSelect.value = this.currentInterval;
     }
 
@@ -160,55 +336,94 @@ class BybitDashboard {
         this.socket.emit('toggleTestnet', { testnet });
     }
 
+    toggleConnection() {
+        // Placeholder for connection toggle
+        console.log('Connection toggle requested');
+    }
+
+    refreshData() {
+        this.clearData();
+        // Emit refresh request
+        this.socket.emit('refresh');
+    }
+
     updateOrderbook(orderbook) {
         if (!orderbook) return;
 
-        this.orderbook = orderbook;
-        this.renderOrderbook();
+        this.enhancedOrderbook.updateData(orderbook);
+        this.renderEnhancedOrderbook();
         this.updateOrderbookStats();
         this.updateSpreadInfo();
     }
 
-    renderOrderbook() {
-        if (!this.orderbook) return;
+    renderEnhancedOrderbook() {
+        const depthData = this.enhancedOrderbook.calculateDepthData();
 
-        const { bids, asks } = this.orderbook;
+        // Render asks (highest to lowest)
+        this.elements.asksContainer.innerHTML = depthData.asks.reverse().map(ask => {
+            const depthPercentage = Math.min(ask.percentage, 100);
+            return `
+                <div class="orderbook-row ask" data-price="${ask.price}">
+                    <div class="depth-background ask-depth" style="width: ${depthPercentage}%"></div>
+                    <span class="price">${this.formatPrice(ask.price)}</span>
+                    <span class="size">${this.formatSize(ask.size)}</span>
+                    <span class="total">${this.formatSize(ask.cumulative)}</span>
+                </div>
+            `;
+        }).join('');
 
-        this.elements.asksContainer.innerHTML = asks.slice(0, 20).reverse().map(ask => `
-            <div class="orderbook-row ask">
-                <span>${ask.price.toFixed(2)}</span>
-                <span>${ask.size.toFixed(4)}</span>
-                <span>${ask.total.toFixed(4)}</span>
-            </div>
-        `).join('');
+        // Render bids (highest to lowest)
+        this.elements.bidsContainer.innerHTML = depthData.bids.map(bid => {
+            const depthPercentage = Math.min(bid.percentage, 100);
+            return `
+                <div class="orderbook-row bid" data-price="${bid.price}">
+                    <div class="depth-background bid-depth" style="width: ${depthPercentage}%"></div>
+                    <span class="price">${this.formatPrice(bid.price)}</span>
+                    <span class="size">${this.formatSize(bid.size)}</span>
+                    <span class="total">${this.formatSize(bid.cumulative)}</span>
+                </div>
+            `;
+        }).join('');
 
-        this.elements.bidsContainer.innerHTML = bids.slice(0, 20).map(bid => `
-            <div class="orderbook-row bid">
-                <span>${bid.price.toFixed(2)}</span>
-                <span>${bid.size.toFixed(4)}</span>
-                <span>${bid.total.toFixed(4)}</span>
-            </div>
-        `).join('');
+        // Add click handlers for price levels
+        this.addOrderbookClickHandlers();
+    }
 
-        if (bids.length > 0 && asks.length > 0) {
-            this.elements.currentPrice.textContent = `$${((bids[0].price + asks[0].price) / 2).toFixed(2)}`;
-        }
+    addOrderbookClickHandlers() {
+        document.querySelectorAll('.orderbook-row').forEach(row => {
+            row.addEventListener('click', () => {
+                const price = row.dataset.price;
+                console.log(`Price level clicked: ${price}`);
+                // Flash the row
+                row.classList.add('updating-row');
+                setTimeout(() => row.classList.remove('updating-row'), 300);
+            });
+        });
     }
 
     updateOrderbookStats() {
-        if (!this.orderbook) return;
+        const imbalance = this.enhancedOrderbook.getImbalanceInfo();
 
-        this.elements.orderbookStats.textContent =
-            `${this.orderbook.bidCount} bids, ${this.orderbook.askCount} asks`;
+        this.elements.bidVolume.textContent = this.formatSize(this.enhancedOrderbook.totalBidVolume);
+        this.elements.askVolume.textContent = this.formatSize(this.enhancedOrderbook.totalAskVolume);
+
+        // Update imbalance bar
+        if (this.elements.bidPortion && this.elements.askPortion) {
+            this.elements.bidPortion.style.width = `${imbalance.bidPercentage}%`;
+            this.elements.askPortion.style.width = `${imbalance.askPercentage}%`;
+        }
+
+        this.elements.imbalanceText.textContent = `${imbalance.bidPercentage}% | ${imbalance.askPercentage}%`;
     }
 
     updateSpreadInfo() {
-        if (!this.orderbook || !this.orderbook.spread) return;
+        const spreadInfo = this.enhancedOrderbook.getSpreadInfo();
+        if (!spreadInfo) return;
 
-        this.elements.spread.textContent = `$${this.orderbook.spread.toFixed(2)} (${this.orderbook.spreadPercent.toFixed(3)}%)`;
-        this.elements.spreadInfo.innerHTML = `
-            <span>Spread: $${this.orderbook.spread.toFixed(2)} (${this.orderbook.spreadPercent.toFixed(3)}%)</span>
-        `;
+        this.elements.currentPrice.textContent = `$${this.formatPrice(spreadInfo.midPrice)}`;
+        this.elements.midPrice.textContent = `$${this.formatPrice(spreadInfo.midPrice)}`;
+        this.elements.spreadValue.textContent = `Spread: $${spreadInfo.spread.toFixed(2)} (${spreadInfo.spreadPercent}%)`;
+        this.elements.spread.textContent = `$${spreadInfo.spread.toFixed(2)}`;
     }
 
     updateKline(data) {
@@ -241,11 +456,11 @@ class BybitDashboard {
                     ${candles.reverse().map(candle => `
                         <tr class="kline-row ${candle.direction} ${candle.status === 'updating' ? 'updating' : ''}">
                             <td>${new Date(candle.start).toLocaleTimeString()}</td>
-                            <td>${candle.open.toFixed(2)}</td>
-                            <td>${candle.high.toFixed(2)}</td>
-                            <td>${candle.low.toFixed(2)}</td>
-                            <td>${candle.close.toFixed(2)}</td>
-                            <td>${candle.volume.toFixed(2)}</td>
+                            <td>${this.formatPrice(candle.open)}</td>
+                            <td>${this.formatPrice(candle.high)}</td>
+                            <td>${this.formatPrice(candle.low)}</td>
+                            <td>${this.formatPrice(candle.close)}</td>
+                            <td>${this.formatVolume(candle.volume)}</td>
                             <td class="${candle.change >= 0 ? 'positive' : 'negative'}">
                                 ${candle.changePercent >= 0 ? '+' : ''}${candle.changePercent.toFixed(2)}%
                             </td>
@@ -257,34 +472,31 @@ class BybitDashboard {
 
         if (this.klineData.candle) {
             const latest = this.klineData.candle;
-            this.elements.priceChange.className = `stat-value ${latest.change >= 0 ? 'positive' : 'negative'}`;
-            this.elements.priceChange.textContent =
-                `${latest.change >= 0 ? '+' : ''}${latest.changePercent.toFixed(2)}%`;
+            this.elements.priceChange.className = `price-change ${latest.change >= 0 ? 'positive' : 'negative'}`;
+            this.elements.priceChange.textContent = `${latest.change >= 0 ? '+' : ''}${latest.changePercent.toFixed(2)}%`;
         }
     }
 
     updateKlineStats() {
         if (!this.klineData) return;
 
-        const status = this.klineData.isConfirmed ? 'Confirmed' : 'Updating';
-        this.elements.klineStats.textContent =
-            `${this.klineData.allCandles.length} candles (${status})`;
+        const status = this.klineData.isConfirmed ? 'Confirmed' : 'Live';
+        this.elements.klineStats.textContent = `${this.klineData.allCandles.length} candles (${status})`;
     }
 
     updateLiquidations(liquidations) {
-        this.liquidations = liquidations.slice(0, 50);
+        this.liquidations = liquidations.slice(0, 100);
         this.renderLiquidations();
         this.updateLiquidationStats();
     }
 
     addLiquidation(liquidation) {
         this.liquidations.unshift(liquidation);
-        if (this.liquidations.length > 50) {
+        if (this.liquidations.length > 100) {
             this.liquidations.pop();
         }
         this.renderLiquidations();
         this.updateLiquidationStats();
-
         this.flashLiquidation();
     }
 
@@ -294,14 +506,14 @@ class BybitDashboard {
             return;
         }
 
-        this.elements.liquidationsList.innerHTML = this.liquidations.map(liq => {
+        this.elements.liquidationsList.innerHTML = this.liquidations.slice(0, 50).map(liq => {
             const sizeClass = this.getSizeClass(liq.value);
             return `
                 <div class="liquidation-row ${liq.side.toLowerCase()} ${sizeClass}">
                     <span>${liq.time}</span>
                     <span>${liq.side}</span>
-                    <span>${liq.volume.toFixed(3)}</span>
-                    <span>${liq.price.toFixed(2)}</span>
+                    <span>${this.formatSize(liq.volume)}</span>
+                    <span>${this.formatPrice(liq.price)}</span>
                     <span>$${this.formatValue(liq.value)}</span>
                 </div>
             `;
@@ -322,12 +534,6 @@ class BybitDashboard {
         return 'small';
     }
 
-    formatValue(value) {
-        if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
-        if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
-        return value.toFixed(0);
-    }
-
     flashLiquidation() {
         this.elements.liquidationsList.classList.add('flash');
         setTimeout(() => {
@@ -335,8 +541,38 @@ class BybitDashboard {
         }, 500);
     }
 
+    formatPrice(price) {
+        if (typeof price !== 'number') price = parseFloat(price);
+        if (price >= 1000) return price.toFixed(2);
+        if (price >= 100) return price.toFixed(3);
+        if (price >= 1) return price.toFixed(4);
+        return price.toFixed(6);
+    }
+
+    formatSize(size) {
+        if (typeof size !== 'number') size = parseFloat(size);
+        if (size >= 1000) return (size / 1000).toFixed(1) + 'K';
+        if (size >= 100) return size.toFixed(1);
+        if (size >= 10) return size.toFixed(2);
+        return size.toFixed(3);
+    }
+
+    formatVolume(volume) {
+        if (typeof volume !== 'number') volume = parseFloat(volume);
+        if (volume >= 1000000) return (volume / 1000000).toFixed(1) + 'M';
+        if (volume >= 1000) return (volume / 1000).toFixed(1) + 'K';
+        return volume.toFixed(1);
+    }
+
+    formatValue(value) {
+        if (typeof value !== 'number') value = parseFloat(value);
+        if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+        if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
+        return value.toFixed(0);
+    }
+
     clearData() {
-        this.orderbook = null;
+        this.enhancedOrderbook = new EnhancedOrderbook();
         this.liquidations = [];
         this.klineData = null;
 
@@ -349,10 +585,13 @@ class BybitDashboard {
         this.elements.priceChange.textContent = '-';
         this.elements.spread.textContent = '-';
         this.elements.volume24h.textContent = '-';
-        this.elements.orderbookStats.textContent = '-';
+        this.elements.bidVolume.textContent = '-';
+        this.elements.askVolume.textContent = '-';
         this.elements.klineStats.textContent = '-';
         this.elements.liquidationStats.textContent = 'Recent: 0';
-        this.elements.spreadInfo.innerHTML = '<span>Spread: -</span>';
+        this.elements.midPrice.textContent = '-';
+        this.elements.spreadValue.textContent = 'Spread: -';
+        this.elements.imbalanceText.textContent = '-';
     }
 
     clearKlineData() {
@@ -363,10 +602,10 @@ class BybitDashboard {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, starting Bybit Dashboard...');
+    console.log('DOM loaded, starting Enhanced Bybit Dashboard...');
     try {
         window.dashboard = new BybitDashboard();
-        console.log('Dashboard created successfully');
+        console.log('Enhanced Dashboard created successfully');
     } catch (error) {
         console.error('Failed to create dashboard:', error);
     }
