@@ -1,42 +1,44 @@
-# Bybit V5 WebSocket Dashboard
+# Bybit WebSocket Dashboard
 
-A real-time cryptocurrency trading dashboard that connects to Bybit's V5 WebSocket API to display live orderbook data, candlestick charts, and liquidations for any trading pair.
+A comprehensive real-time cryptocurrency trading dashboard that connects directly to Bybit's V5 WebSocket API. This application provides live market data visualization including orderbook depth, candlestick charts, and liquidation feeds for any supported trading pair on the Bybit exchange.
 
-![Dashboard Preview](https://img.shields.io/badge/status-live-brightgreen) ![Node.js](https://img.shields.io/badge/node.js-v16+-green) ![License](https://img.shields.io/badge/license-MIT-blue)
+## Overview
 
-## Features
+The dashboard offers a professional-grade interface for monitoring cryptocurrency markets with real-time data streams. Built with Node.js and vanilla JavaScript, it provides a lightweight yet powerful solution for traders and developers who need instant access to market data without the complexity of trading execution.
 
-### 📊 Real-time Data Streams
-- **Live Orderbook**: 50-level depth with bid/ask spread visualization
-- **Candlestick Data**: Real-time OHLC data with multiple timeframes (1m, 3m, 5m, 15m, 30m, 1h, 4h, 1D)
-- **Liquidations Feed**: Real-time liquidation events with size classification
-- **Price Statistics**: Current price, 24h change, spread, and volume
+## Key Features
 
-### 🔧 Interactive Controls
-- **Symbol Switching**: Change trading pairs dynamically (BTCUSDT, ETHUSDT, etc.)
-- **Timeframe Selection**: Switch between different candlestick intervals
-- **Environment Toggle**: Switch between mainnet and testnet
-- **Auto-reconnection**: Robust WebSocket connection management
+### Real-time Market Data
+- **Live Orderbook**: 50-level depth orderbook displaying bid and ask prices with volume information
+- **Candlestick Charts**: Real-time OHLC (Open, High, Low, Close) data with customizable timeframes
+- **Liquidation Feed**: Live stream of liquidation events showing position closures and market sentiment
+- **Price Statistics**: Current price, 24-hour change percentage, bid-ask spread, and trading volume
 
-### 💻 Technical Features
-- **WebSocket Integration**: Direct connection to Bybit V5 API
-- **Real-time Updates**: Live data with minimal latency
-- **Responsive Design**: Works on desktop and mobile devices
-- **Error Handling**: Comprehensive error management and recovery
-- **Memory Management**: Efficient data buffering and cleanup
+### Interactive Controls
+- **Dynamic Symbol Switching**: Change between any Bybit USDT perpetual contracts (BTCUSDT, ETHUSDT, SOLUSDT, etc.)
+- **Timeframe Selection**: Multiple candlestick intervals from 1-minute scalping to daily analysis
+- **Environment Toggle**: Switch between live mainnet data and testnet for development/testing
+- **Auto-reconnection**: Robust WebSocket connection management with automatic retry logic
+
+### Technical Capabilities
+- **WebSocket Integration**: Direct connection to Bybit V5 public API endpoints
+- **Low Latency Updates**: Optimized data processing for minimal delay
+- **Responsive Design**: Adaptive interface that works on desktop and mobile devices
+- **Memory Management**: Efficient data buffering with automatic cleanup to prevent memory leaks
+- **Error Handling**: Comprehensive error recovery and connection status monitoring
 
 ## Quick Start
 
 ### Prerequisites
-- Node.js 16+ installed
-- Internet connection for WebSocket access
+- Node.js 16 or higher
+- Active internet connection for WebSocket data streams
 
 ### Installation
 
-1. **Clone or download the project**:
+1. **Clone the repository**:
    ```bash
    git clone <repository-url>
-   cd live-market-data
+   cd live-market-dashboard
    ```
 
 2. **Install dependencies**:
@@ -49,217 +51,104 @@ A real-time cryptocurrency trading dashboard that connects to Bybit's V5 WebSock
    npm start
    ```
 
-4. **Open the dashboard**:
-   ```
-   http://localhost:3000
-   ```
+4. **Access the dashboard**:
+   Open your browser and navigate to `http://localhost:3000`
 
-That's it! The dashboard will automatically connect to Bybit's WebSocket API and start displaying live data.
+## Dashboard Interface
 
-## Usage Guide
+### Orderbook Panel
+The left panel displays a real-time orderbook with 50 levels of market depth:
+- **Ask Orders (Red)**: Sell orders arranged from lowest to highest price
+- **Bid Orders (Green)**: Buy orders arranged from highest to lowest price
+- **Spread Calculation**: Real-time bid-ask spread with percentage
+- **Volume Aggregation**: Cumulative volume at each price level
 
-### Basic Operations
+### Candlestick Chart
+The bottom section shows live candlestick data:
+- **OHLC Information**: Complete price action for each time period
+- **Volume Bars**: Trading volume visualization
+- **Real-time Updates**: Live candle formation with confirmation status
+- **Color Coding**: Green for bullish (close > open) and red for bearish (close < open) candles
 
-1. **View Live Data**: The dashboard automatically loads BTCUSDT data on startup
-2. **Change Symbol**: Enter a trading pair (e.g., ETHUSDT, SOLUSDT) and click "Change"
-3. **Switch Timeframe**: Use the interval dropdown to change candlestick timeframes
-4. **Toggle Testnet**: Enable testnet mode for testing with simulated data
+### Liquidation Feed
+The right panel streams liquidation events:
+- **Position Details**: Long vs short liquidations with size classification
+- **Value Formatting**: Smart formatting (K, M, B) for large liquidation amounts
+- **Timing Information**: Timestamp for each liquidation event
+- **Market Impact**: Visual indicators for liquidation size (Small, Medium, Large, Huge)
 
-### Dashboard Sections
+## Supported Markets
 
-#### 📈 Orderbook (Left Panel - Top)
-- **Asks (Red)**: Sell orders sorted by price (ascending)
-- **Bids (Green)**: Buy orders sorted by price (descending)
-- **Spread**: Price difference between best bid and ask
-- **Columns**: Price, Size, Total Volume
+The dashboard supports all Bybit USDT perpetual contracts including:
+- **Major Cryptocurrencies**: BTC, ETH, SOL, ADA, DOT, AVAX, MATIC
+- **DeFi Tokens**: UNI, LINK, AAVE, COMP, SUSHI, CRV
+- **Meme Coins**: DOGE, SHIB, PEPE, FLOKI
+- **Emerging Assets**: And hundreds of other supported pairs
 
-#### 📊 Price Chart (Left Panel - Bottom)
-- **OHLC Data**: Open, High, Low, Close, Volume for each candle
-- **Real-time Updates**: Live updating candlesticks
-- **Color Coding**: Green for bullish, Red for bearish candles
-- **Status Indicators**: Shows if candle is confirmed or still updating
+## Timeframe Options
 
-#### 💥 Liquidations (Right Panel)
-- **Recent Events**: Latest liquidation transactions
-- **Side Classification**: Long (red) vs Short (green) liquidations
-- **Size Categories**: Small, Medium, Large, Huge liquidations
-- **Value Display**: Formatted liquidation amounts (K, M notation)
-
-### Supported Symbols
-
-The dashboard supports Bybit's USDT perpetual contracts:
-- Major pairs: BTCUSDT, ETHUSDT, SOLUSDT, ADAUSDT, DOTUSDT
-- DeFi tokens: UNIUSDT, LINKUSDT, AAVEUSDT, COMPUSDT
-- Meme coins: DOGEUSDT, SHIBUSDT, PEPEUSDT
-- And many more...
-
-### Timeframe Options
-
-- **1m, 3m, 5m**: Short-term scalping timeframes
-- **15m, 30m**: Intraday trading timeframes
-- **1h, 4h**: Swing trading timeframes
-- **1D**: Daily analysis timeframe
-
-## Project Structure
-
-```
-bybit-dashboard/
-├── package.json              # Dependencies and scripts
-├── server.js                 # Main server with Socket.io
-├── src/
-│   ├── websocket-client.js   # Bybit WebSocket connection manager
-│   ├── orderbook-manager.js  # Orderbook data processing
-│   ├── kline-manager.js      # Candlestick data handling
-│   └── liquidation-manager.js # Liquidation data processing
-├── public/
-│   ├── index.html           # Frontend interface
-│   ├── style.css            # Dashboard styling
-│   └── app.js               # Frontend JavaScript logic
-└── README.md                # This file
-```
-
-## API Specifications
-
-### Bybit V5 WebSocket Topics
-
-The dashboard subscribes to the following Bybit V5 public WebSocket topics:
-
-1. **Orderbook**: `orderbook.50.{SYMBOL}`
-   - 50-level depth orderbook
-   - Snapshot and delta updates
-   - ~20ms push frequency
-
-2. **Kline/Candlestick**: `kline.{INTERVAL}.{SYMBOL}`
-   - Real-time OHLC data
-   - 1-60s push frequency
-   - Confirmed vs updating candle status
-
-3. **All Liquidations**: `allLiquidation.{SYMBOL}`
-   - Complete liquidation events
-   - 500ms push frequency
-   - Long/Short position liquidations
-
-### WebSocket Endpoints
-
-- **Mainnet**: `wss://stream.bybit.com/v5/public/linear`
-- **Testnet**: `wss://stream-testnet.bybit.com/v5/public/linear`
+Available candlestick intervals:
+- **Scalping**: 1m, 3m, 5m for high-frequency analysis
+- **Intraday**: 15m, 30m for day trading strategies
+- **Swing Trading**: 1h, 4h for medium-term analysis
+- **Position Trading**: 1D for long-term trend analysis
 
 ## Configuration
 
 ### Environment Variables
-
-You can customize the server behavior using environment variables:
-
 ```bash
 PORT=3000                    # Server port (default: 3000)
 ```
 
 ### Default Settings
+- Initial symbol: BTCUSDT
+- Default timeframe: 5 minutes
+- Environment: Mainnet
+- Maximum stored liquidations: 100 events
+- Maximum stored candles: 100 periods
 
-- **Symbol**: BTCUSDT
-- **Interval**: 5 minutes
-- **Environment**: Mainnet
-- **Max Liquidations**: 100 events
-- **Max Candles**: 100 candles
-- **Orderbook Depth**: 50 levels
+## Development
+
+### Local Development Setup
+```bash
+npm install
+npm run dev
+```
+
+### Project Structure
+```
+├── server.js              # Express server with Socket.io
+├── src/
+│   ├── websocket-client.js # Bybit WebSocket connection
+│   ├── orderbook-manager.js # Orderbook data processing
+│   ├── kline-manager.js    # Candlestick data handling
+│   └── liquidation-manager.js # Liquidation processing
+├── public/
+│   ├── index.html         # Frontend interface
+│   ├── style.css          # Dashboard styling
+│   └── app.js             # Client-side logic
+└── package.json           # Dependencies and scripts
+```
+
+## API Integration
+
+The application connects to Bybit's V5 WebSocket API using the following endpoints:
+- **Mainnet**: `wss://stream.bybit.com/v5/public/linear`
+- **Testnet**: `wss://stream-testnet.bybit.com/v5/public/linear`
+
+### Subscribed Topics
+- `orderbook.50.{SYMBOL}` - 50-level orderbook updates
+- `kline.{INTERVAL}.{SYMBOL}` - Real-time candlestick data
+- `allLiquidation.{SYMBOL}` - Complete liquidation events
 
 ## Troubleshooting
 
 ### Common Issues
-
-1. **Connection Failed**
-   - Check internet connection
-   - Verify Bybit API accessibility
-   - Try switching to testnet mode
-
-2. **No Data Displaying**
-   - Wait 30-60 seconds for initial data
-   - Check browser console for errors
-   - Refresh the page
-
-3. **Symbol Not Working**
-   - Ensure symbol format is correct (e.g., BTCUSDT)
-   - Verify symbol exists on Bybit
-   - Try popular symbols like BTCUSDT, ETHUSDT
-
-4. **Performance Issues**
-   - Close other browser tabs
-   - Check system resources
-   - Reduce update frequency if needed
-
-### Debug Mode
-
-Check the browser console (F12) and server logs for detailed error messages and connection status.
-
-## Development
-
-### Local Development
-
-1. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-2. **Start in development mode**:
-   ```bash
-   npm run dev
-   ```
-
-3. **Access the dashboard**:
-   ```
-   http://localhost:3000
-   ```
-
-### Code Structure
-
-- **Backend**: Node.js with Express and Socket.io
-- **Frontend**: Vanilla JavaScript with WebSocket client
-- **Data Flow**: Bybit WebSocket → Server → Socket.io → Frontend
-- **Styling**: CSS Grid and Flexbox for responsive design
-
-### Adding New Features
-
-1. **New Data Streams**: Extend managers in `/src/` folder
-2. **UI Components**: Modify `/public/index.html` and `/public/style.css`
-3. **API Endpoints**: Add routes in `server.js`
-4. **Frontend Logic**: Update `/public/app.js`
-
-## Performance Considerations
-
-- **Memory Usage**: Data buffers are limited to prevent memory leaks
-- **Update Frequency**: Optimized for real-time updates without overwhelming the browser
-- **Connection Management**: Automatic reconnection with exponential backoff
-- **Data Validation**: Input validation for symbols and intervals
-
-## Security Notes
-
-- No API keys required (public data only)
-- No user authentication or data storage
-- Client-side validation for user inputs
-- Safe handling of WebSocket connections
+1. **Connection Problems**: Verify internet connectivity and Bybit API status
+2. **Symbol Errors**: Ensure correct symbol format (e.g., BTCUSDT, not BTC/USDT)
+3. **Performance**: Close unnecessary browser tabs and check system resources
+4. **Data Delays**: Allow 30-60 seconds for initial data population
 
 ## License
 
-MIT License - see LICENSE file for details.
-
-## Support
-
-For issues, questions, or contributions:
-
-1. Check the [troubleshooting section](#troubleshooting)
-2. Review the [Bybit API documentation](https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook)
-3. Create an issue with detailed error information
-
-## Changelog
-
-### v1.0.0 (2024)
-- Initial release with full Bybit V5 WebSocket integration
-- Real-time orderbook, klines, and liquidations
-- Responsive web interface
-- Symbol and timeframe switching
-- Testnet support
-- Error handling and reconnection logic
-
----
-
-**Built with ❤️ for the crypto trading community**
+MIT License
