@@ -617,6 +617,7 @@ class BybitDashboard {
         this.drawGrid(ctx, chartArea, minPrice, maxPrice);
         this.drawCandlesticks(ctx, data, chartArea, minPrice, priceRange, candleWidth, candleSpacing);
         this.drawVolume(ctx, data, volumeArea, maxVolume, candleWidth, candleSpacing);
+        this.drawCurrentPriceLine(ctx, data, chartArea, minPrice, priceRange);
         this.drawPriceScale(ctx, minPrice, maxPrice, chartArea);
     }
 
@@ -683,6 +684,36 @@ class BybitDashboard {
             ctx.fillStyle = isBullish ? 'rgba(0, 212, 170, 0.5)' : 'rgba(255, 107, 107, 0.5)';
             ctx.fillRect(x - candleWidth / 2, y, candleWidth, height);
         });
+    }
+
+    drawCurrentPriceLine(ctx, data, area, minPrice, priceRange) {
+        if (!data.length) return;
+
+        const latestCandle = data[data.length - 1];
+        const currentPrice = latestCandle.close;
+
+        const y = area.y + area.height - ((currentPrice - minPrice) / priceRange) * area.height;
+
+        ctx.save();
+        ctx.strokeStyle = '#F7931A';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 4]);
+
+        ctx.beginPath();
+        ctx.moveTo(area.x, y);
+        ctx.lineTo(area.x + area.width, y);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = '#F7931A';
+        ctx.font = '11px JetBrains Mono';
+        ctx.textAlign = 'left';
+        ctx.fillRect(area.x + area.width + 2, y - 8, 70, 16);
+        ctx.fillStyle = '#000';
+        ctx.fillText(this.formatPrice(currentPrice), area.x + area.width + 6, y + 3);
+
+        ctx.restore();
     }
 
     drawPriceScale(ctx, minPrice, maxPrice, area) {
