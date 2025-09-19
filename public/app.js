@@ -668,12 +668,7 @@ class BybitDashboard {
             const rectY = Math.min(openY, closeY);
             const rectHeight = Math.abs(closeY - openY) || 1;
 
-            if (isBullish) {
-                ctx.strokeStyle = color;
-                ctx.strokeRect(x - candleWidth / 2, rectY, candleWidth, rectHeight);
-            } else {
-                ctx.fillRect(x - candleWidth / 2, rectY, candleWidth, rectHeight);
-            }
+            ctx.fillRect(x - candleWidth / 2, rectY, candleWidth, rectHeight);
         });
     }
 
