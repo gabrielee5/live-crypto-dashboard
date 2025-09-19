@@ -113,6 +113,7 @@ class BybitDashboard {
         this.isConnected = false;
         this.enhancedOrderbook = new EnhancedOrderbook();
         this.liquidations = [];
+        this.bigTrades = [];
         this.klineData = null;
         this.updateQueue = [];
         this.isUpdating = false;
@@ -166,7 +167,12 @@ class BybitDashboard {
 
             // Liquidations
             liquidationsList: document.getElementById('liquidationsList'),
-            liquidationStats: document.getElementById('liquidationStats')
+            liquidationStats: document.getElementById('liquidationStats'),
+
+            // Big Trades
+            bigTradesList: document.getElementById('bigTradesList'),
+            bigTradesStats: document.getElementById('bigTradesStats'),
+            tradeMinSize: document.getElementById('tradeMinSize')
         };
 
         // Initialize charts
@@ -223,6 +229,14 @@ class BybitDashboard {
             this.queueUpdate(() => this.updateLiquidations(liquidations));
         });
 
+        this.socket.on('bigTrade', (trade) => {
+            this.queueUpdate(() => this.addBigTrade(trade));
+        });
+
+        this.socket.on('bigTrades', (trades) => {
+            this.queueUpdate(() => this.updateBigTrades(trades));
+        });
+
         this.socket.on('symbolChanged', (data) => {
             this.currentSymbol = data.symbol;
             this.elements.symbolInput.value = data.symbol;
@@ -272,6 +286,11 @@ class BybitDashboard {
 
         this.elements.testnetToggle.addEventListener('change', () => {
             this.toggleTestnet(this.elements.testnetToggle.checked);
+        });
+
+        this.elements.tradeMinSize.addEventListener('change', () => {
+            const minValue = parseInt(this.elements.tradeMinSize.value);
+            this.changeBigTradesFilter(minValue);
         });
 
         // Enhanced keyboard shortcuts
@@ -389,6 +408,10 @@ class BybitDashboard {
 
     toggleTestnet(testnet) {
         this.socket.emit('toggleTestnet', { testnet });
+    }
+
+    changeBigTradesFilter(minValue) {
+        this.socket.emit('changeBigTradesFilter', { minValue });
     }
 
     toggleConnection() {
@@ -974,6 +997,72 @@ class BybitDashboard {
         }, 500);
     }
 
+    updateBigTrades(trades) {
+        this.bigTrades = trades.slice(0, 100);
+        this.renderBigTrades();
+        this.updateBigTradesStats();
+    }
+
+    addBigTrade(trade) {
+        this.bigTrades.unshift(trade);
+        if (this.bigTrades.length > 100) {
+            this.bigTrades.pop();
+        }
+        this.renderBigTrades();
+        this.updateBigTradesStats();
+        this.flashBigTrade();
+    }
+
+    renderBigTrades() {
+        if (this.bigTrades.length === 0) {
+            this.elements.bigTradesList.innerHTML = '<div class="loading">No big trades yet...</div>';
+            return;
+        }
+
+        this.elements.bigTradesList.innerHTML = this.bigTrades.slice(0, 50).map(trade => {
+            const sizeClass = this.getTradeSize(trade.value);
+            const specialClass = trade.isBlockTrade ? 'block-trade' : (sizeClass === 'whale' ? 'whale' : '');
+
+            return `
+                <div class="big-trade-row ${trade.side.toLowerCase()} ${sizeClass} ${specialClass}">
+                    <span>${trade.time}</span>
+                    <span>${trade.side}</span>
+                    <span>${this.formatSize(trade.size)}</span>
+                    <span>${this.formatPrice(trade.price)}</span>
+                    <span>$${this.formatValue(trade.value)}</span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    updateBigTradesStats() {
+        const recent = this.bigTrades.filter(trade =>
+            Date.now() - trade.timestamp < 300000
+        );
+        const whales = recent.filter(t => t.value >= 500000).length;
+        const blocks = recent.filter(t => t.isBlockTrade).length;
+
+        let statsText = `Trades: ${this.bigTrades.length}`;
+        if (whales > 0) statsText += ` | Whales: ${whales}`;
+        if (blocks > 0) statsText += ` | Blocks: ${blocks}`;
+
+        this.elements.bigTradesStats.textContent = statsText;
+    }
+
+    getTradeSize(value) {
+        if (value >= 1000000) return 'whale';
+        if (value >= 500000) return 'large';
+        if (value >= 100000) return 'medium';
+        return 'small';
+    }
+
+    flashBigTrade() {
+        this.elements.bigTradesList.classList.add('flash');
+        setTimeout(() => {
+            this.elements.bigTradesList.classList.remove('flash');
+        }, 500);
+    }
+
     formatPrice(price) {
         if (typeof price !== 'number') price = parseFloat(price);
         if (price >= 1000) return price.toFixed(2);
@@ -1007,12 +1096,14 @@ class BybitDashboard {
     clearData() {
         this.enhancedOrderbook = new EnhancedOrderbook();
         this.liquidations = [];
+        this.bigTrades = [];
         this.klineData = null;
         this.chartData = [];
 
         this.elements.asksContainer.innerHTML = '<div class="loading">Loading asks...</div>';
         this.elements.bidsContainer.innerHTML = '<div class="loading">Loading bids...</div>';
         this.elements.liquidationsList.innerHTML = '<div class="loading">Loading liquidations...</div>';
+        this.elements.bigTradesList.innerHTML = '<div class="loading">Loading trades...</div>';
 
         if (this.elements.chartLoading) {
             this.elements.chartLoading.style.display = 'flex';
@@ -1030,6 +1121,7 @@ class BybitDashboard {
         this.elements.askVolume.textContent = '-';
         this.elements.klineStats.textContent = '-';
         this.elements.liquidationStats.textContent = 'Recent: 0';
+        this.elements.bigTradesStats.textContent = 'Trades: 0';
         this.elements.midPrice.textContent = '-';
         this.elements.spreadValue.textContent = 'Spread: -';
         this.elements.imbalanceText.textContent = '-';

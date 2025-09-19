@@ -164,6 +164,36 @@
                     </div>
                 </div>
             </section>
+
+            <section class="big-trades-panel">
+                <header class="panel-header">
+                    <h2 class="panel-title">Big Trades</h2>
+                    <div class="big-trades-controls">
+                        <span id="bigTradesStats">Trades: 0</span>
+                        <div class="trade-filters">
+                            <select id="tradeMinSize" class="trade-filter-select">
+                                <option value="10000">$10K+</option>
+                                <option value="50000" selected>$50K+</option>
+                                <option value="100000">$100K+</option>
+                                <option value="500000">$500K+</option>
+                                <option value="1000000">$1M+</option>
+                            </select>
+                        </div>
+                    </div>
+                </header>
+                <div class="big-trades-container">
+                    <div class="big-trades-header">
+                        <span>Time</span>
+                        <span>Side</span>
+                        <span>Size</span>
+                        <span>Price</span>
+                        <span>Value</span>
+                    </div>
+                    <div class="big-trades-list" id="bigTradesList">
+                        <div class="loading">Loading trades...</div>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 

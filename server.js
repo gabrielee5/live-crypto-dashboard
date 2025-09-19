@@ -7,6 +7,7 @@ const BybitWebSocketClient = require('./src/websocket-client');
 const OrderbookManager = require('./src/orderbook-manager');
 const KlineManager = require('./src/kline-manager');
 const LiquidationManager = require('./src/liquidation-manager');
+const BigTradesManager = require('./src/big-trades-manager');
 
 class BybitDashboardServer {
     constructor() {
@@ -27,6 +28,7 @@ class BybitDashboardServer {
         this.orderbookManager = new OrderbookManager();
         this.klineManager = new KlineManager();
         this.liquidationManager = new LiquidationManager();
+        this.bigTradesManager = new BigTradesManager();
 
         this.currentSymbol = 'BTCUSDT';
         this.currentInterval = '5';
@@ -103,6 +105,7 @@ class BybitDashboardServer {
             socket.emit('orderbook', this.orderbookManager.getOrderbook(this.currentSymbol));
             socket.emit('kline', this.klineManager.getKlineData(this.currentSymbol, this.currentInterval));
             socket.emit('liquidations', this.liquidationManager.getLiquidations(this.currentSymbol));
+            socket.emit('bigTrades', this.bigTradesManager.getFilteredTrades());
 
             socket.on('changeSymbol', (data) => {
                 if (data && data.symbol) {
@@ -119,6 +122,13 @@ class BybitDashboardServer {
             socket.on('toggleTestnet', (data) => {
                 if (data && typeof data.testnet === 'boolean') {
                     this.toggleTestnet(data.testnet);
+                }
+            });
+
+            socket.on('changeBigTradesFilter', (data) => {
+                if (data && data.minValue && typeof data.minValue === 'number') {
+                    this.bigTradesManager.setMinTradeValue(data.minValue);
+                    socket.emit('bigTrades', this.bigTradesManager.getFilteredTrades());
                 }
             });
 
@@ -145,6 +155,13 @@ class BybitDashboardServer {
             if (liquidation.symbol === this.currentSymbol) {
                 this.io.emit('liquidation', liquidation);
                 this.io.emit('liquidations', this.liquidationManager.getLiquidations(this.currentSymbol));
+            }
+        });
+
+        this.bigTradesManager.on('bigTrade', (trade) => {
+            if (trade.symbol === this.currentSymbol) {
+                this.io.emit('bigTrade', trade);
+                this.io.emit('bigTrades', this.bigTradesManager.getFilteredTrades());
             }
         });
     }
@@ -185,6 +202,7 @@ class BybitDashboardServer {
             this.orderbookManager.processMessage(message);
             this.klineManager.processMessage(message);
             this.liquidationManager.processMessage(message);
+            this.bigTradesManager.processMessage(message);
         });
     }
 
@@ -194,6 +212,7 @@ class BybitDashboardServer {
         this.wsClient.subscribe(`orderbook.50.${this.currentSymbol}`);
         this.wsClient.subscribe(`kline.${this.currentInterval}.${this.currentSymbol}`);
         this.wsClient.subscribe(`allLiquidation.${this.currentSymbol}`);
+        this.wsClient.subscribe(`publicTrade.${this.currentSymbol}`);
 
         console.log(`Subscribed to data for ${this.currentSymbol} with ${this.currentInterval} interval`);
     }
@@ -207,6 +226,7 @@ class BybitDashboardServer {
         this.wsClient.unsubscribe(`orderbook.50.${targetSymbol}`);
         this.wsClient.unsubscribe(`kline.${targetInterval}.${targetSymbol}`);
         this.wsClient.unsubscribe(`allLiquidation.${targetSymbol}`);
+        this.wsClient.unsubscribe(`publicTrade.${targetSymbol}`);
     }
 
     changeSymbol(newSymbol) {
