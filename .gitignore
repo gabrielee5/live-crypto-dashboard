@@ -155,7 +155,7 @@ dist/
 *.sqlite3
 
 # Configuration files with sensitive data
-# config.json # no sensible data is stored here, so not ignoring it
+config.json
 secrets.json
 .secrets
 
