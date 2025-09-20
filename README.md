@@ -112,8 +112,57 @@ PORT=3000                    # Server port (default: 3000)
 ### Local Development Setup
 ```bash
 npm install
+cp config.example.json config.json  # Create your config file
 npm run dev
 ```
+
+## Configuration
+
+The application uses a JSON configuration file to store user preferences and settings. When you first run the application, it will automatically create a `config.json` file from the default settings.
+
+### Configuration File Setup
+1. Copy the example configuration:
+   ```bash
+   cp config.example.json config.json
+   ```
+
+2. Customize your settings in `config.json`:
+
+```json
+{
+  "appearance": {
+    "theme": "dark"                    // UI theme: "dark" or "light"
+  },
+  "trading": {
+    "defaultSymbol": "BTCUSDT",        // Initial trading pair to load
+    "defaultInterval": "5",            // Default chart timeframe
+    "bigTradesFilter": 50000,          // Minimum USD value for big trades alert
+    "whaleThreshold": 500000,          // USD threshold for whale trade classification
+    "blockTradeThreshold": 1000000,    // USD threshold for block trade classification
+    "alarmEnabled": false              // Audio alert for significant events
+  },
+  "display": {
+    "maxTradesHistory": 100            // Maximum number of trades to keep in memory
+  },
+  "symbols": {
+    "favorites": ["BTCUSDT", "ETHUSDT"], // Quick-access favorite trading pairs
+    "recent": []                        // Recently viewed symbols (auto-populated)
+  },
+  "network": {
+    "isTestnet": false                 // Use Bybit testnet instead of mainnet
+  }
+}
+```
+
+### Configuration API
+The application provides REST endpoints to modify configuration at runtime:
+
+- `GET /api/config` - Get current configuration
+- `PUT /api/config/:path` - Update specific setting (e.g., `/api/config/appearance.theme`)
+- `POST /api/config` - Update multiple settings
+- `POST /api/config/reset` - Reset to default configuration
+
+Settings are automatically saved and persist between application restarts.
 
 ### Project Structure
 ```

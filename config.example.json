@@ -4,7 +4,7 @@
   },
   "trading": {
     "defaultSymbol": "BTCUSDT",
-    "defaultInterval": "1",
+    "defaultInterval": "5",
     "bigTradesFilter": 50000,
     "whaleThreshold": 500000,
     "blockTradeThreshold": 1000000,
@@ -15,17 +15,13 @@
   },
   "symbols": {
     "favorites": [
+      "BTCUSDT",
       "ETHUSDT",
       "ADAUSDT",
       "SOLUSDT",
-      "BNBUSDT",
-      "DOGEUSDT",
-      "BTCUSDT"
+      "BNBUSDT"
     ],
-    "recent": [
-      "BTCUSDT",
-      "ETHUSDT"
-    ]
+    "recent": []
   },
   "network": {
     "isTestnet": false
