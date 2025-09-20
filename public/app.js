@@ -108,6 +108,7 @@ class BybitDashboard {
     constructor() {
         console.log('Initializing Enhanced Bybit Dashboard...');
         this.socket = null;
+        this.config = null;
         this.currentSymbol = 'BTCUSDT';
         this.currentInterval = '5';
         this.isConnected = false;
@@ -121,13 +122,15 @@ class BybitDashboard {
         this.audioContext = null;
         this.initializeAudio();
 
-        this.initializeElements();
-        this.initializeSocket();
-        this.setupEventListeners();
-        this.initializeTheme();
-        this.startUpdateLoop();
-        this.startPerformanceMonitoring();
-        console.log('Enhanced Dashboard initialization complete');
+        this.loadConfig().then(() => {
+            this.initializeElements();
+            this.initializeSocket();
+            this.setupEventListeners();
+            this.initializeTheme();
+            this.startUpdateLoop();
+            this.startPerformanceMonitoring();
+            console.log('Enhanced Dashboard initialization complete');
+        });
     }
 
     initializeElements() {
@@ -138,6 +141,8 @@ class BybitDashboard {
             symbolDisplay: document.getElementById('symbolDisplay'),
             symbolInput: document.getElementById('symbolInput'),
             symbolBtn: document.getElementById('symbolBtn'),
+            favoritesSelect: document.getElementById('favoritesSelect'),
+            favoriteBtn: document.getElementById('favoriteBtn'),
             intervalSelect: document.getElementById('intervalSelect'),
             alarmToggle: document.getElementById('alarmToggle'),
             themeToggle: document.getElementById('themeToggle'),
@@ -290,6 +295,18 @@ class BybitDashboard {
             }
         });
 
+        this.elements.favoritesSelect.addEventListener('change', (e) => {
+            const symbol = e.target.value;
+            if (symbol) {
+                this.changeSymbol(symbol);
+                e.target.value = ''; // Reset selection
+            }
+        });
+
+        this.elements.favoriteBtn.addEventListener('click', () => {
+            this.toggleFavorite(this.currentSymbol);
+        });
+
         this.elements.intervalSelect.addEventListener('change', () => {
             const interval = this.elements.intervalSelect.value;
             if (interval !== this.currentInterval) {
@@ -415,6 +432,51 @@ class BybitDashboard {
         this.elements.symbolInput.value = this.currentSymbol;
         this.elements.symbolDisplay.textContent = this.currentSymbol;
         this.elements.intervalSelect.value = this.currentInterval;
+        this.updateFavoriteButton();
+        this.updateFavoritesDropdown();
+    }
+
+    updateFavoritesDropdown() {
+        const favorites = this.config?.symbols?.favorites || [];
+        const select = this.elements.favoritesSelect;
+
+        // Clear existing options except the first one
+        while (select.children.length > 1) {
+            select.removeChild(select.lastChild);
+        }
+
+        // Add favorite symbols
+        favorites.forEach(symbol => {
+            const option = document.createElement('option');
+            option.value = symbol;
+            option.textContent = symbol;
+            select.appendChild(option);
+        });
+    }
+
+    updateFavoriteButton() {
+        const favorites = this.config?.symbols?.favorites || [];
+        const isFavorite = favorites.includes(this.currentSymbol);
+        this.elements.favoriteBtn.classList.toggle('active', isFavorite);
+        this.elements.favoriteBtn.title = isFavorite ? 'Remove from favorites' : 'Add to favorites';
+    }
+
+    async toggleFavorite(symbol) {
+        const favorites = this.config?.symbols?.favorites || [];
+        const isFavorite = favorites.includes(symbol);
+
+        let newFavorites;
+        if (isFavorite) {
+            newFavorites = favorites.filter(s => s !== symbol);
+        } else {
+            newFavorites = [...favorites, symbol];
+        }
+
+        const result = await this.saveConfig('symbols.favorites', newFavorites);
+        if (result.success) {
+            this.updateFavoriteButton();
+            this.updateFavoritesDropdown();
+        }
     }
 
     changeSymbol(symbol) {
@@ -429,9 +491,63 @@ class BybitDashboard {
         this.alarmEnabled = enabled;
     }
 
+    async loadConfig() {
+        try {
+            const response = await fetch('/api/config');
+            this.config = await response.json();
+
+            // Update default values from config
+            this.currentSymbol = this.config.trading?.defaultSymbol || 'BTCUSDT';
+            this.currentInterval = this.config.trading?.defaultInterval || '5';
+            this.alarmEnabled = this.config.trading?.alarmEnabled || false;
+
+            console.log('Configuration loaded:', this.config);
+        } catch (error) {
+            console.error('Failed to load config:', error);
+            this.config = this.getDefaultConfig();
+        }
+    }
+
+    getDefaultConfig() {
+        return {
+            appearance: { theme: 'dark', compactMode: false },
+            trading: {
+                defaultSymbol: 'BTCUSDT',
+                defaultInterval: '5',
+                bigTradesFilter: 50000,
+                alarmEnabled: false
+            },
+            symbols: { favorites: [], recent: [] }
+        };
+    }
+
+    async saveConfig(path, value) {
+        try {
+            const response = await fetch(`/api/config/${path}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ value })
+            });
+            const result = await response.json();
+            if (result.success) {
+                // Update local config
+                const keys = path.split('.');
+                let current = this.config;
+                for (let i = 0; i < keys.length - 1; i++) {
+                    if (!current[keys[i]]) current[keys[i]] = {};
+                    current = current[keys[i]];
+                }
+                current[keys[keys.length - 1]] = value;
+            }
+            return result;
+        } catch (error) {
+            console.error('Failed to save config:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     initializeTheme() {
-        // Default to dark mode
-        const savedTheme = localStorage.getItem('dashboard-theme') || 'dark';
+        const savedTheme = this.config?.appearance?.theme || 'dark';
         const isLightMode = savedTheme === 'light';
 
         this.elements.themeToggle.checked = isLightMode;
@@ -445,7 +561,10 @@ class BybitDashboard {
 
     toggleTheme(lightMode) {
         document.body.classList.toggle('light-theme', lightMode);
-        localStorage.setItem('dashboard-theme', lightMode ? 'light' : 'dark');
+        const theme = lightMode ? 'light' : 'dark';
+        this.saveConfig('appearance.theme', theme);
+        // Keep localStorage for immediate theme persistence
+        localStorage.setItem('dashboard-theme', theme);
     }
 
     initializeAudio() {

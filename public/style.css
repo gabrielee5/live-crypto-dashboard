@@ -286,6 +286,7 @@ body {
   gap: 12px;
 }
 
+.favorites-select,
 .symbol-input {
   background: var(--color-bg-darker);
   border: 1px solid #444;
@@ -294,7 +295,38 @@ body {
   border-radius: 6px;
   font-family: var(--font-mono);
   font-size: 13px;
+}
+
+.favorites-select {
+  width: 120px;
+  margin-right: 8px;
+}
+
+.symbol-input {
   width: 100px;
+}
+
+.favorite-btn {
+  background: var(--color-bg-darker);
+  border: 1px solid #444;
+  color: var(--color-text-secondary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-left: 4px;
+  transition: all var(--anim-fast);
+}
+
+.favorite-btn:hover {
+  color: var(--color-spread);
+  border-color: var(--color-spread);
+}
+
+.favorite-btn.active {
+  color: var(--color-spread);
+  background: rgba(247, 147, 26, 0.1);
+  border-color: var(--color-spread);
 }
 
 .symbol-btn {

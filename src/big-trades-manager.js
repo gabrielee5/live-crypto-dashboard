@@ -1,13 +1,22 @@
 const EventEmitter = require('events');
 
 class BigTradesManager extends EventEmitter {
-    constructor() {
+    constructor(config = null) {
         super();
+        this.config = config;
         this.trades = [];
-        this.maxTrades = 100;
-        this.minTradeValue = 50000; // Default $50K minimum
-        this.whaleThreshold = 500000; // $500K+ = whale trade
-        this.blockTradeThreshold = 1000000; // $1M+ = block trade
+
+        if (config) {
+            this.maxTrades = config.get('display.maxTradesHistory') || 100;
+            this.minTradeValue = config.get('trading.bigTradesFilter') || 50000;
+            this.whaleThreshold = config.get('trading.whaleThreshold') || 500000;
+            this.blockTradeThreshold = config.get('trading.blockTradeThreshold') || 1000000;
+        } else {
+            this.maxTrades = 100;
+            this.minTradeValue = 50000;
+            this.whaleThreshold = 500000;
+            this.blockTradeThreshold = 1000000;
+        }
     }
 
     setMinTradeValue(value) {

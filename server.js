@@ -9,9 +9,13 @@ const KlineManager = require('./src/kline-manager');
 const LiquidationManager = require('./src/liquidation-manager');
 const BigTradesManager = require('./src/big-trades-manager');
 const TickerManager = require('./src/ticker-manager');
+const ConfigManager = require('./src/config-manager');
 
 class BybitDashboardServer {
     constructor() {
+        this.config = new ConfigManager();
+        const tradingDefaults = this.config.getTradingDefaults();
+
         this.app = express();
         this.server = http.createServer(this.app);
         this.io = socketIo(this.server, {
@@ -27,14 +31,14 @@ class BybitDashboardServer {
 
         this.wsClient = null;
         this.orderbookManager = new OrderbookManager();
+        this.isTestnet = this.config.get('network.isTestnet');
         this.klineManager = new KlineManager(this.isTestnet);
         this.liquidationManager = new LiquidationManager();
-        this.bigTradesManager = new BigTradesManager();
+        this.bigTradesManager = new BigTradesManager(this.config);
         this.tickerManager = new TickerManager();
 
-        this.currentSymbol = 'BTCUSDT';
-        this.currentInterval = '5';
-        this.isTestnet = false;
+        this.currentSymbol = tradingDefaults.symbol;
+        this.currentInterval = tradingDefaults.interval;
 
         this.setupExpress();
         this.setupSocketIO();
@@ -89,6 +93,48 @@ class BybitDashboardServer {
                 res.status(400).json({ error: 'Invalid testnet flag' });
             }
         });
+
+        // Config endpoints
+        this.app.get('/api/config', (req, res) => {
+            res.json(this.config.getAll());
+        });
+
+        this.app.post('/api/config', (req, res) => {
+            try {
+                const success = this.config.update(req.body);
+                if (success) {
+                    res.json({ success: true, config: this.config.getAll() });
+                } else {
+                    res.status(500).json({ error: 'Failed to save config' });
+                }
+            } catch (error) {
+                res.status(400).json({ error: error.message });
+            }
+        });
+
+        this.app.put('/api/config/:path', (req, res) => {
+            try {
+                const { path } = req.params;
+                const { value } = req.body;
+                const success = this.config.set(path, value);
+                if (success) {
+                    res.json({ success: true, value });
+                } else {
+                    res.status(500).json({ error: 'Failed to save config' });
+                }
+            } catch (error) {
+                res.status(400).json({ error: error.message });
+            }
+        });
+
+        this.app.post('/api/config/reset', (req, res) => {
+            const success = this.config.reset();
+            if (success) {
+                res.json({ success: true, config: this.config.getAll() });
+            } else {
+                res.status(500).json({ error: 'Failed to reset config' });
+            }
+        });
     }
 
     setupSocketIO() {
@@ -132,6 +178,7 @@ class BybitDashboardServer {
             socket.on('changeBigTradesFilter', (data) => {
                 if (data && data.minValue && typeof data.minValue === 'number') {
                     this.bigTradesManager.setMinTradeValue(data.minValue);
+                    this.config.set('trading.bigTradesFilter', data.minValue);
                     socket.emit('bigTrades', this.bigTradesManager.getFilteredTrades());
                 }
             });
@@ -276,6 +323,8 @@ class BybitDashboardServer {
         this.unsubscribeFromData();
 
         this.currentSymbol = newSymbol;
+        this.config.set('trading.defaultSymbol', newSymbol);
+        this.config.addRecentSymbol(newSymbol);
 
         this.orderbookManager.clear(this.currentSymbol);
         this.klineManager.clear(this.currentSymbol);
@@ -308,6 +357,7 @@ class BybitDashboardServer {
         }
 
         this.currentInterval = newInterval;
+        this.config.set('trading.defaultInterval', newInterval);
         this.klineManager.clear(this.currentSymbol, this.currentInterval);
 
         if (this.wsClient && this.wsClient.isConnected) {
@@ -330,6 +380,7 @@ class BybitDashboardServer {
         console.log(`Switching to ${testnet ? 'testnet' : 'mainnet'}`);
 
         this.isTestnet = testnet;
+        this.config.set('network.isTestnet', testnet);
 
         this.orderbookManager.clear();
         this.klineManager.clear();
