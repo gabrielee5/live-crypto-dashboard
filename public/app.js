@@ -510,14 +510,20 @@ class BybitDashboard {
 
     getDefaultConfig() {
         return {
-            appearance: { theme: 'dark', compactMode: false },
+            appearance: { theme: 'dark' },
             trading: {
                 defaultSymbol: 'BTCUSDT',
                 defaultInterval: '5',
                 bigTradesFilter: 50000,
+                whaleThreshold: 500000,
+                blockTradeThreshold: 1000000,
                 alarmEnabled: false
             },
-            symbols: { favorites: [], recent: [] }
+            display: {
+                maxTradesHistory: 100
+            },
+            symbols: { favorites: [], recent: [] },
+            network: { isTestnet: false }
         };
     }
 

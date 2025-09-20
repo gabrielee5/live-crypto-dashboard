@@ -1,26 +1,25 @@
 {
   "appearance": {
-    "theme": "dark",
-    "compactMode": true
+    "theme": "dark"
   },
   "trading": {
     "defaultSymbol": "BTCUSDT",
-    "defaultInterval": "5",
+    "defaultInterval": "1",
     "bigTradesFilter": 50000,
     "whaleThreshold": 500000,
     "blockTradeThreshold": 1000000,
     "alarmEnabled": false
   },
   "display": {
-    "maxOrderbookDepth": 50,
-    "maxTradesHistory": 100,
-    "autoRefreshInterval": 1000,
-    "candleChartHeight": 300
+    "maxTradesHistory": 100
   },
   "symbols": {
     "favorites": [
       "ETHUSDT",
+      "ADAUSDT",
       "SOLUSDT",
+      "BNBUSDT",
+      "DOGEUSDT",
       "BTCUSDT"
     ],
     "recent": [
@@ -29,8 +28,6 @@
     ]
   },
   "network": {
-    "isTestnet": false,
-    "reconnectDelay": 5000,
-    "maxReconnectAttempts": 10
+    "isTestnet": false
   }
 }

@@ -9,8 +9,7 @@ class ConfigManager extends EventEmitter {
         this.config = {};
         this.defaultConfig = {
             appearance: {
-                theme: "dark",
-                compactMode: false
+                theme: "dark"
             },
             trading: {
                 defaultSymbol: "BTCUSDT",
@@ -21,19 +20,14 @@ class ConfigManager extends EventEmitter {
                 alarmEnabled: false
             },
             display: {
-                maxOrderbookDepth: 50,
-                maxTradesHistory: 100,
-                autoRefreshInterval: 1000,
-                candleChartHeight: 300
+                maxTradesHistory: 100
             },
             symbols: {
                 favorites: ["BTCUSDT", "ETHUSDT", "ADAUSDT", "SOLUSDT", "BNBUSDT"],
                 recent: []
             },
             network: {
-                isTestnet: false,
-                reconnectDelay: 5000,
-                maxReconnectAttempts: 10
+                isTestnet: false
             }
         };
 
