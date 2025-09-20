@@ -135,7 +135,7 @@ The application uses a JSON configuration file to store user preferences and set
   },
   "trading": {
     "defaultSymbol": "BTCUSDT",        // Initial trading pair to load
-    "defaultInterval": "5",            // Default chart timeframe
+    "defaultInterval": "5",            // Default chart timeframe, format: 1, 3, 5, 15, 60, 240, D, W, M
     "bigTradesFilter": 50000,          // Minimum USD value for big trades alert
     "whaleThreshold": 500000,          // USD threshold for whale trade classification
     "blockTradeThreshold": 1000000,    // USD threshold for block trade classification
