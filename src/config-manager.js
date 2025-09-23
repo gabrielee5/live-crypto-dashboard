@@ -14,6 +14,7 @@ class ConfigManager extends EventEmitter {
             trading: {
                 defaultSymbol: "BTCUSDT",
                 defaultInterval: "5",
+                orderbookDepth: 50,
                 bigTradesFilter: 50000,
                 whaleThreshold: 500000,
                 blockTradeThreshold: 1000000,
@@ -157,11 +158,25 @@ class ConfigManager extends EventEmitter {
         return {
             symbol: this.get('trading.defaultSymbol'),
             interval: this.get('trading.defaultInterval'),
+            orderbookDepth: this.get('trading.orderbookDepth'),
             bigTradesFilter: this.get('trading.bigTradesFilter'),
             whaleThreshold: this.get('trading.whaleThreshold'),
             blockTradeThreshold: this.get('trading.blockTradeThreshold'),
             alarmEnabled: this.get('trading.alarmEnabled')
         };
+    }
+
+    getValidOrderbookDepths() {
+        // Based on Bybit WebSocket documentation
+        return [1, 50, 200, 500, 1000];
+    }
+
+    setOrderbookDepth(depth) {
+        const validDepths = this.getValidOrderbookDepths();
+        if (!validDepths.includes(depth)) {
+            throw new Error(`Invalid orderbook depth: ${depth}. Valid options: ${validDepths.join(', ')}`);
+        }
+        return this.set('trading.orderbookDepth', depth);
     }
 }
 

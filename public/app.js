@@ -111,8 +111,9 @@ class BybitDashboard {
         this.config = null;
         this.currentSymbol = 'BTCUSDT';
         this.currentInterval = '5';
+        this.currentOrderbookDepth = 50;
         this.isConnected = false;
-        this.enhancedOrderbook = new EnhancedOrderbook();
+        this.enhancedOrderbook = new EnhancedOrderbook(this.currentOrderbookDepth);
         this.liquidations = [];
         this.bigTrades = [];
         this.klineData = null;
@@ -144,6 +145,7 @@ class BybitDashboard {
             favoritesSelect: document.getElementById('favoritesSelect'),
             favoriteBtn: document.getElementById('favoriteBtn'),
             intervalSelect: document.getElementById('intervalSelect'),
+            orderbookDepthSelect: document.getElementById('orderbookDepthSelect'),
             alarmToggle: document.getElementById('alarmToggle'),
             themeToggle: document.getElementById('themeToggle'),
             currentPrice: document.getElementById('currentPrice'),
@@ -224,6 +226,10 @@ class BybitDashboard {
             this.updateConnectionStatus(data.connected);
             if (data.symbol) this.currentSymbol = data.symbol;
             if (data.interval) this.currentInterval = data.interval;
+            if (data.orderbookDepth) {
+                this.currentOrderbookDepth = data.orderbookDepth;
+                this.enhancedOrderbook.maxDepth = data.orderbookDepth;
+            }
             this.updateControls();
         });
 
@@ -266,6 +272,12 @@ class BybitDashboard {
             this.currentInterval = data.interval;
             this.elements.intervalSelect.value = data.interval;
             this.clearKlineData();
+        });
+
+        this.socket.on('orderbookDepthChanged', (data) => {
+            this.currentOrderbookDepth = data.orderbookDepth;
+            this.elements.orderbookDepthSelect.value = data.orderbookDepth;
+            this.enhancedOrderbook.maxDepth = data.orderbookDepth;
         });
 
         this.socket.on('connect_error', (error) => {
@@ -311,6 +323,13 @@ class BybitDashboard {
             const interval = this.elements.intervalSelect.value;
             if (interval !== this.currentInterval) {
                 this.changeInterval(interval);
+            }
+        });
+
+        this.elements.orderbookDepthSelect.addEventListener('change', () => {
+            const depth = parseInt(this.elements.orderbookDepthSelect.value);
+            if (depth !== this.currentOrderbookDepth) {
+                this.changeOrderbookDepth(depth);
             }
         });
 
@@ -432,6 +451,7 @@ class BybitDashboard {
         this.elements.symbolInput.value = this.currentSymbol;
         this.elements.symbolDisplay.textContent = this.currentSymbol;
         this.elements.intervalSelect.value = this.currentInterval;
+        this.elements.orderbookDepthSelect.value = this.currentOrderbookDepth;
         this.updateFavoriteButton();
         this.updateFavoritesDropdown();
     }
@@ -485,6 +505,10 @@ class BybitDashboard {
 
     changeInterval(interval) {
         this.socket.emit('changeInterval', { interval });
+    }
+
+    changeOrderbookDepth(depth) {
+        this.socket.emit('changeOrderbookDepth', { depth });
     }
 
     toggleAlarm(enabled) {
@@ -622,6 +646,7 @@ class BybitDashboard {
     updateOrderbook(orderbook) {
         if (!orderbook) return;
 
+        console.log(`Orderbook update: ${orderbook.bids?.length || 0} bids, ${orderbook.asks?.length || 0} asks, maxDepth: ${this.enhancedOrderbook.maxDepth}`);
         this.enhancedOrderbook.updateData(orderbook);
         this.renderEnhancedOrderbook();
         this.updateOrderbookStats();
@@ -1344,7 +1369,7 @@ class BybitDashboard {
     }
 
     clearData() {
-        this.enhancedOrderbook = new EnhancedOrderbook();
+        this.enhancedOrderbook = new EnhancedOrderbook(this.currentOrderbookDepth);
         this.liquidations = [];
         this.bigTrades = [];
         this.klineData = null;

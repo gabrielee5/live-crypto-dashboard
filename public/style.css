@@ -493,11 +493,50 @@ body {
 }
 
 /* Enhanced Orderbook */
+.panel-title-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.depth-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
 .orderbook-controls {
   display: flex;
   flex-direction: column;
   gap: 8px;
   align-items: flex-end;
+}
+
+.depth-select {
+  background: var(--color-bg-darker);
+  border: 1px solid #444;
+  color: var(--color-text-primary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.depth-select:hover {
+  border-color: #666;
+}
+
+.depth-select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.depth-label {
+  color: var(--color-text-secondary);
 }
 
 .volume-summary {

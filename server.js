@@ -39,6 +39,7 @@ class BybitDashboardServer {
 
         this.currentSymbol = tradingDefaults.symbol;
         this.currentInterval = tradingDefaults.interval;
+        this.currentOrderbookDepth = tradingDefaults.orderbookDepth;
 
         this.setupExpress();
         this.setupSocketIO();
@@ -59,6 +60,7 @@ class BybitDashboardServer {
                 connected: this.wsClient ? this.wsClient.isConnected : false,
                 symbol: this.currentSymbol,
                 interval: this.currentInterval,
+                orderbookDepth: this.currentOrderbookDepth,
                 testnet: this.isTestnet,
                 subscriptions: this.wsClient ? this.wsClient.getConnectionStatus().subscriptions : []
             });
@@ -81,6 +83,20 @@ class BybitDashboardServer {
                 res.json({ success: true, interval: this.currentInterval });
             } else {
                 res.status(400).json({ error: 'Invalid interval' });
+            }
+        });
+
+        this.app.post('/api/orderbook-depth', (req, res) => {
+            const { depth } = req.body;
+            if (depth && typeof depth === 'number') {
+                try {
+                    this.changeOrderbookDepth(depth);
+                    res.json({ success: true, orderbookDepth: this.currentOrderbookDepth });
+                } catch (error) {
+                    res.status(400).json({ error: error.message });
+                }
+            } else {
+                res.status(400).json({ error: 'Invalid orderbook depth' });
             }
         });
 
@@ -147,10 +163,11 @@ class BybitDashboardServer {
                 connected: this.wsClient ? this.wsClient.isConnected : false,
                 symbol: this.currentSymbol,
                 interval: this.currentInterval,
+                orderbookDepth: this.currentOrderbookDepth,
                 testnet: this.isTestnet
             });
 
-            socket.emit('orderbook', this.orderbookManager.getOrderbook(this.currentSymbol));
+            socket.emit('orderbook', this.orderbookManager.getOrderbook(this.currentSymbol, this.currentOrderbookDepth));
             socket.emit('liquidations', this.liquidationManager.getLiquidations(this.currentSymbol));
             socket.emit('bigTrades', this.bigTradesManager.getFilteredTrades());
             socket.emit('ticker', this.tickerManager.getTicker(this.currentSymbol));
@@ -166,6 +183,16 @@ class BybitDashboardServer {
             socket.on('changeInterval', (data) => {
                 if (data && data.interval) {
                     this.changeInterval(data.interval);
+                }
+            });
+
+            socket.on('changeOrderbookDepth', (data) => {
+                if (data && typeof data.depth === 'number') {
+                    try {
+                        this.changeOrderbookDepth(data.depth);
+                    } catch (error) {
+                        socket.emit('error', { message: error.message, type: 'invalid_depth' });
+                    }
                 }
             });
 
@@ -192,7 +219,9 @@ class BybitDashboardServer {
     setupEventHandlers() {
         this.orderbookManager.on('orderbookUpdate', (orderbook) => {
             if (orderbook.symbol === this.currentSymbol) {
-                this.io.emit('orderbook', orderbook);
+                // Get the orderbook with the current depth setting
+                const formattedOrderbook = this.orderbookManager.getOrderbook(this.currentSymbol, this.currentOrderbookDepth);
+                this.io.emit('orderbook', formattedOrderbook);
             }
         });
 
@@ -281,24 +310,25 @@ class BybitDashboardServer {
     subscribeToData() {
         if (!this.wsClient || !this.wsClient.isConnected) return;
 
-        this.wsClient.subscribe(`orderbook.50.${this.currentSymbol}`);
+        this.wsClient.subscribe(`orderbook.${this.currentOrderbookDepth}.${this.currentSymbol}`);
         this.wsClient.subscribe(`kline.${this.currentInterval}.${this.currentSymbol}`);
         this.wsClient.subscribe(`allLiquidation.${this.currentSymbol}`);
         this.wsClient.subscribe(`publicTrade.${this.currentSymbol}`);
         this.wsClient.subscribe(`tickers.${this.currentSymbol}`);
 
-        console.log(`Subscribed to data for ${this.currentSymbol} with ${this.currentInterval} interval`);
+        console.log(`Subscribed to data for ${this.currentSymbol} with ${this.currentInterval} interval and ${this.currentOrderbookDepth} orderbook depth`);
 
         this.klineManager.initializeHistoricalData(this.currentSymbol, this.currentInterval);
     }
 
-    unsubscribeFromData(symbol = null, interval = null) {
+    unsubscribeFromData(symbol = null, interval = null, orderbookDepth = null) {
         if (!this.wsClient || !this.wsClient.isConnected) return;
 
         const targetSymbol = symbol || this.currentSymbol;
         const targetInterval = interval || this.currentInterval;
+        const targetOrderbookDepth = orderbookDepth || this.currentOrderbookDepth;
 
-        this.wsClient.unsubscribe(`orderbook.50.${targetSymbol}`);
+        this.wsClient.unsubscribe(`orderbook.${targetOrderbookDepth}.${targetSymbol}`);
         this.wsClient.unsubscribe(`kline.${targetInterval}.${targetSymbol}`);
         this.wsClient.unsubscribe(`allLiquidation.${targetSymbol}`);
         this.wsClient.unsubscribe(`publicTrade.${targetSymbol}`);
@@ -338,6 +368,7 @@ class BybitDashboardServer {
             connected: this.wsClient ? this.wsClient.isConnected : false,
             symbol: this.currentSymbol,
             interval: this.currentInterval,
+            orderbookDepth: this.currentOrderbookDepth,
             testnet: this.isTestnet
         });
     }
@@ -370,6 +401,36 @@ class BybitDashboardServer {
             connected: this.wsClient ? this.wsClient.isConnected : false,
             symbol: this.currentSymbol,
             interval: this.currentInterval,
+            orderbookDepth: this.currentOrderbookDepth,
+            testnet: this.isTestnet
+        });
+    }
+
+    changeOrderbookDepth(newDepth) {
+        if (newDepth === this.currentOrderbookDepth) return;
+
+        console.log(`Changing orderbook depth from ${this.currentOrderbookDepth} to ${newDepth}`);
+
+        // Validate depth using config manager
+        this.config.setOrderbookDepth(newDepth);
+
+        if (this.wsClient && this.wsClient.isConnected) {
+            this.wsClient.unsubscribe(`orderbook.${this.currentOrderbookDepth}.${this.currentSymbol}`);
+        }
+
+        this.currentOrderbookDepth = newDepth;
+        this.orderbookManager.clear(this.currentSymbol);
+
+        if (this.wsClient && this.wsClient.isConnected) {
+            this.wsClient.subscribe(`orderbook.${this.currentOrderbookDepth}.${this.currentSymbol}`);
+        }
+
+        this.io.emit('orderbookDepthChanged', { orderbookDepth: this.currentOrderbookDepth });
+        this.io.emit('status', {
+            connected: this.wsClient ? this.wsClient.isConnected : false,
+            symbol: this.currentSymbol,
+            interval: this.currentInterval,
+            orderbookDepth: this.currentOrderbookDepth,
             testnet: this.isTestnet
         });
     }
@@ -436,6 +497,7 @@ class BybitDashboardServer {
             console.log(`Bybit Dashboard server running on http://localhost:${port}`);
             console.log(`Initial symbol: ${this.currentSymbol}`);
             console.log(`Initial interval: ${this.currentInterval}`);
+            console.log(`Initial orderbook depth: ${this.currentOrderbookDepth}`);
             console.log(`Mode: ${this.isTestnet ? 'Testnet' : 'Mainnet'}`);
         });
     }

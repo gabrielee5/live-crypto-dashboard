@@ -149,8 +149,8 @@ class OrderbookManager extends EventEmitter {
         };
     }
 
-    getOrderbook(symbol) {
-        return this.getFormattedOrderbook(symbol);
+    getOrderbook(symbol, depth = 50) {
+        return this.getFormattedOrderbook(symbol, depth);
     }
 
     getAllOrderbooks() {

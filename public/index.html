@@ -83,7 +83,19 @@
         <main class="dashboard-main">
             <section class="orderbook-panel">
                 <header class="panel-header">
-                    <h2 class="panel-title">Orderbook</h2>
+                    <div class="panel-title-container">
+                        <h2 class="panel-title">Orderbook</h2>
+                        <div class="depth-selector">
+                            <select id="orderbookDepthSelect" class="depth-select">
+                                <option value="1">1</option>
+                                <option value="50" selected>50</option>
+                                <option value="200">200</option>
+                                <option value="500">500</option>
+                                <option value="1000">1000</option>
+                            </select>
+                            <span class="depth-label">levels</span>
+                        </div>
+                    </div>
                     <div class="orderbook-controls">
                         <div class="volume-summary">
                             <span class="bid-volume">Bids: <span id="bidVolume">-</span></span>
