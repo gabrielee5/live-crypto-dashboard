@@ -1082,11 +1082,14 @@ class BybitDashboard {
 
         ctx.lineWidth = 2;
 
+        // Draw bid curve (green)
         ctx.beginPath();
         ctx.strokeStyle = '#00D4AA';
         ctx.fillStyle = 'rgba(0, 212, 170, 0.1)';
 
         let firstPoint = true;
+        let lowestBidPrice = null;
+        let lowestBidX = null;
         for (const bid of depthData.bids.reverse()) {
             const x = area.x + ((bid.price - minPrice) / priceRange) * area.width;
             const y = area.y + area.height - (bid.cumulative / maxCumulative) * area.height;
@@ -1095,6 +1098,8 @@ class BybitDashboard {
                 ctx.moveTo(x, area.y + area.height);
                 ctx.lineTo(x, y);
                 firstPoint = false;
+                lowestBidPrice = bid.price;
+                lowestBidX = x;
             } else {
                 ctx.lineTo(x, y);
             }
@@ -1105,11 +1110,14 @@ class BybitDashboard {
         ctx.fill();
         ctx.stroke();
 
+        // Draw ask curve (red)
         ctx.beginPath();
         ctx.strokeStyle = '#FF6B6B';
         ctx.fillStyle = 'rgba(255, 107, 107, 0.1)';
 
         firstPoint = true;
+        let highestAskPrice = null;
+        let highestAskX = null;
         for (const ask of depthData.asks) {
             const x = area.x + ((ask.price - minPrice) / priceRange) * area.width;
             const y = area.y + area.height - (ask.cumulative / maxCumulative) * area.height;
@@ -1120,6 +1128,8 @@ class BybitDashboard {
                 firstPoint = false;
             } else {
                 ctx.lineTo(x, y);
+                highestAskPrice = ask.price;
+                highestAskX = x;
             }
         }
 
@@ -1128,6 +1138,7 @@ class BybitDashboard {
         ctx.fill();
         ctx.stroke();
 
+        // Draw mid-price line
         ctx.strokeStyle = '#F7931A';
         ctx.lineWidth = 1;
         ctx.setLineDash([2, 2]);
@@ -1136,6 +1147,24 @@ class BybitDashboard {
         ctx.lineTo(midX, area.y + area.height);
         ctx.stroke();
         ctx.setLineDash([]);
+
+        // Draw price labels at extremes
+        ctx.font = '10px JetBrains Mono';
+        ctx.fillStyle = '#00D4AA';
+
+        // Lowest bid price (left extreme) - left aligned
+        if (lowestBidPrice && lowestBidX) {
+            ctx.textAlign = 'left';
+            ctx.fillText(this.formatPrice(lowestBidPrice), lowestBidX, area.y + area.height + 15);
+        }
+
+        ctx.fillStyle = '#FF6B6B';
+
+        // Highest ask price (right extreme) - right aligned
+        if (highestAskPrice && highestAskX) {
+            ctx.textAlign = 'right';
+            ctx.fillText(this.formatPrice(highestAskPrice), highestAskX, area.y + area.height + 15);
+        }
     }
 
     drawDepthScale(ctx, area, maxCumulative) {
