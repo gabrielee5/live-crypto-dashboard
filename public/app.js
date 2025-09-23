@@ -121,6 +121,7 @@ class BybitDashboard {
         this.isUpdating = false;
         this.alarmEnabled = false;
         this.audioContext = null;
+        this.showOrderBookLevels = false;
         this.initializeAudio();
 
         this.loadConfig().then(() => {
@@ -176,6 +177,7 @@ class BybitDashboard {
             chartInfoContent: document.getElementById('chartInfoContent'),
             chartLoading: document.getElementById('chartLoading'),
             klineStats: document.getElementById('klineStats'),
+            toggleOrderBookLevels: document.getElementById('toggleOrderBookLevels'),
 
             // Depth chart elements
             depthChart: document.getElementById('depthChart'),
@@ -341,6 +343,10 @@ class BybitDashboard {
         this.elements.themeToggle.addEventListener('change', () => {
             this.toggleTheme(this.elements.themeToggle.checked);
             this.updateToggleState(this.elements.themeToggle.parentElement, this.elements.themeToggle.checked);
+        });
+
+        this.elements.toggleOrderBookLevels.addEventListener('click', () => {
+            this.toggleOrderBookLevels();
         });
 
         this.elements.tradeMinSize.addEventListener('change', () => {
@@ -513,6 +519,17 @@ class BybitDashboard {
 
     toggleAlarm(enabled) {
         this.alarmEnabled = enabled;
+    }
+
+    toggleOrderBookLevels() {
+        this.showOrderBookLevels = !this.showOrderBookLevels;
+        this.elements.toggleOrderBookLevels.textContent = this.showOrderBookLevels ? 'Hide Orders' : 'Show Orders';
+        this.elements.toggleOrderBookLevels.classList.toggle('active', this.showOrderBookLevels);
+
+        // Re-render chart to show/hide orderbook levels
+        if (this.chartData.length > 0) {
+            this.renderChart();
+        }
     }
 
     async loadConfig() {
@@ -833,6 +850,7 @@ class BybitDashboard {
 
         this.drawGrid(ctx, chartArea, minPrice, maxPrice);
         this.drawCandlesticks(ctx, data, chartArea, minPrice, priceRange, candleWidth, candleSpacing);
+        this.drawOrderBookLevels(ctx, chartArea, minPrice, priceRange);
         this.drawVolume(ctx, data, volumeArea, maxVolume, candleWidth, candleSpacing);
         this.drawCurrentPriceLine(ctx, data, chartArea, minPrice, priceRange);
         this.drawPriceScale(ctx, minPrice, maxPrice, chartArea);
@@ -947,6 +965,65 @@ class BybitDashboard {
             const y = area.y + area.height - (area.height / gridLines) * i;
             ctx.fillText(this.formatPrice(price), area.x + area.width + 10, y + 4);
         }
+    }
+
+    drawOrderBookLevels(ctx, area, minPrice, priceRange) {
+        if (!this.enhancedOrderbook || priceRange <= 0 || !this.showOrderBookLevels) return;
+
+        const depthData = this.enhancedOrderbook.calculateDepthData();
+        if (!depthData || (!depthData.bids.length && !depthData.asks.length)) return;
+
+        ctx.save();
+
+        // Filter levels that are visible in current price range
+        const visibleBids = depthData.bids.filter(bid =>
+            bid.price >= minPrice && bid.price <= (minPrice + priceRange)
+        ).slice(0, this.currentOrderbookDepth); // Use orderbook depth setting
+
+        const visibleAsks = depthData.asks.filter(ask =>
+            ask.price >= minPrice && ask.price <= (minPrice + priceRange)
+        ).slice(0, this.currentOrderbookDepth); // Use orderbook depth setting
+
+        // Find max size for normalization
+        const allSizes = [...visibleBids.map(b => b.size), ...visibleAsks.map(a => a.size)];
+        const maxSize = Math.max(...allSizes);
+
+        if (maxSize === 0) {
+            ctx.restore();
+            return;
+        }
+
+        // Draw bid levels (green, support levels)
+        visibleBids.forEach(bid => {
+            const y = area.y + area.height - ((bid.price - minPrice) / priceRange) * area.height;
+            const normalizedSize = bid.size / maxSize;
+            const lineWidth = Math.max(1, Math.min(6, normalizedSize * 6)); // 1-6px thickness
+
+            ctx.strokeStyle = `rgba(0, 212, 170, ${0.15 + normalizedSize * 0.25})`; // Lighter colors
+            ctx.lineWidth = lineWidth;
+
+            ctx.beginPath();
+            ctx.moveTo(area.x, y);
+            ctx.lineTo(area.x + area.width, y);
+            ctx.stroke();
+        });
+
+        // Draw ask levels (red, resistance levels)
+        visibleAsks.forEach(ask => {
+            const y = area.y + area.height - ((ask.price - minPrice) / priceRange) * area.height;
+            const normalizedSize = ask.size / maxSize;
+            const lineWidth = Math.max(1, Math.min(6, normalizedSize * 6)); // 1-6px thickness
+
+            ctx.strokeStyle = `rgba(255, 107, 107, ${0.15 + normalizedSize * 0.25})`; // Lighter colors
+            ctx.lineWidth = lineWidth;
+
+            ctx.beginPath();
+            ctx.moveTo(area.x, y);
+            ctx.lineTo(area.x + area.width, y);
+            ctx.stroke();
+        });
+
+        ctx.restore();
     }
 
     updateCrosshair() {
