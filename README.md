@@ -316,6 +316,6 @@ Settings are automatically saved and persist between application restarts.
 
 <br>
 
-[![Star this repo](https://img.shields.io/github/stars/gabrielee5/live-market-dashboard?style=social)](https://github.com/gabrielee5/live-market-dashboard)
+[![Star this repo](https://img.shields.io/github/stars/gabrielee5/live-crypto-dashboard?style=social)](https://github.com/gabrielee5/live-crypto-dashboard)
 
 </div>
