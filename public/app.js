@@ -112,6 +112,7 @@ class BybitDashboard {
         this.currentSymbol = 'BTCUSDT';
         this.currentInterval = '5';
         this.currentOrderbookDepth = 50;
+        this.currentCandleCount = 100;
         this.isConnected = false;
         this.enhancedOrderbook = new EnhancedOrderbook(this.currentOrderbookDepth);
         this.liquidations = [];
@@ -190,7 +191,11 @@ class BybitDashboard {
             // Big Trades
             bigTradesList: document.getElementById('bigTradesList'),
             bigTradesStats: document.getElementById('bigTradesStats'),
-            tradeMinSize: document.getElementById('tradeMinSize')
+            tradeMinSize: document.getElementById('tradeMinSize'),
+
+            // Candle Count Control
+            candleCountSlider: document.getElementById('candleCountSlider'),
+            candleCountValue: document.getElementById('candleCountValue')
         };
 
         // Initialize charts
@@ -354,6 +359,18 @@ class BybitDashboard {
             this.changeBigTradesFilter(minValue);
         });
 
+        this.elements.candleCountSlider.addEventListener('input', () => {
+            const candleCount = parseInt(this.elements.candleCountSlider.value);
+            this.currentCandleCount = candleCount;
+            this.elements.candleCountValue.textContent = candleCount;
+
+            // Update chart data if kline data is available
+            if (this.klineData && this.klineData.allCandles) {
+                this.chartData = this.klineData.allCandles.slice(-this.currentCandleCount);
+                this.renderChart();
+            }
+        });
+
         // Enhanced keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'INPUT') return;
@@ -458,6 +475,8 @@ class BybitDashboard {
         this.elements.symbolDisplay.textContent = this.currentSymbol;
         this.elements.intervalSelect.value = this.currentInterval;
         this.elements.orderbookDepthSelect.value = this.currentOrderbookDepth;
+        this.elements.candleCountSlider.value = this.currentCandleCount;
+        this.elements.candleCountValue.textContent = this.currentCandleCount;
         this.updateFavoriteButton();
         this.updateFavoritesDropdown();
     }
@@ -804,7 +823,7 @@ class BybitDashboard {
     renderKline() {
         if (!this.klineData || !this.klineData.allCandles) return;
 
-        this.chartData = this.klineData.allCandles.slice(-100);
+        this.chartData = this.klineData.allCandles.slice(-this.currentCandleCount);
         this.elements.chartLoading.style.display = 'none';
         this.renderChart();
 

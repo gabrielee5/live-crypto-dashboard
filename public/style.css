@@ -534,6 +534,83 @@ body.light-theme .chart-toggle-btn.active {
   color: #00A380;
 }
 
+/* Chart Controls Row */
+.chart-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Candle Count Control */
+.candle-count-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.candle-count-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.candle-count-slider {
+  width: 80px;
+  height: 4px;
+  border-radius: 2px;
+  background: #555;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.candle-count-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-spread);
+  cursor: pointer;
+  border: 2px solid var(--color-bg-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.candle-count-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-spread);
+  cursor: pointer;
+  border: 2px solid var(--color-bg-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.candle-count-value {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  min-width: 30px;
+  text-align: center;
+}
+
+/* Light theme adjustments for slider */
+body.light-theme .candle-count-slider {
+  background: #DDD;
+}
+
+body.light-theme .candle-count-slider::-webkit-slider-thumb {
+  border-color: #FFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+body.light-theme .candle-count-slider::-moz-range-thumb {
+  border-color: #FFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
 /* Enhanced Orderbook */
 .panel-title-container {
   display: flex;

@@ -5,7 +5,7 @@ class KlineManager extends EventEmitter {
     constructor(isTestnet = false) {
         super();
         this.klineData = new Map();
-        this.maxCandles = 100;
+        this.maxCandles = 500;
         this.isTestnet = isTestnet;
         this.baseUrl = isTestnet
             ? 'https://api-testnet.bybit.com'
@@ -82,7 +82,7 @@ class KlineManager extends EventEmitter {
             interval,
             candle,
             isConfirmed: klineData.confirm,
-            allCandles: data.candles.slice(-50)
+            allCandles: data.candles.slice(-250)
         });
     }
 
@@ -138,7 +138,7 @@ class KlineManager extends EventEmitter {
             result[key] = {
                 symbol: data.symbol,
                 interval: data.interval,
-                candles: data.candles.slice(-50),
+                candles: data.candles.slice(-250),
                 currentCandle: data.currentCandle,
                 candleCount: data.candles.length
             };
